@@ -1,0 +1,6 @@
+# Allow all search engines to crawl panooja.com
+User-agent: *
+Allow: /
+
+# Sitemap location
+Sitemap: https://www.panooja.com/sitemap.xml
