@@ -108,3 +108,42 @@ form.addEventListener('submit', async (event) => {
     submitButton.textContent = 'Join the Early Access List';
   }
 });
+
+// Category Filter Logic
+const filterBtns = document.querySelectorAll('.filter-btn');
+const productCards = document.querySelectorAll('.product-card');
+const emptyMsg = document.getElementById('emptyCategoryMsg');
+
+if (filterBtns.length > 0) {
+  filterBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      // Remove active class from all
+      filterBtns.forEach(b => b.classList.remove('active'));
+      // Add to clicked
+      btn.classList.add('active');
+      
+      const filter = btn.getAttribute('data-filter');
+      let visibleCount = 0;
+      
+      productCards.forEach(card => {
+        const category = card.getAttribute('data-category');
+        if (filter === 'all' || filter === category) {
+          card.style.display = 'flex';
+          visibleCount++;
+          // Trigger reflow for animation
+          setTimeout(() => card.classList.add('visible'), 50);
+        } else {
+          card.style.display = 'none';
+          card.classList.remove('visible');
+        }
+      });
+      
+      // Show empty state if no products
+      if (visibleCount === 0) {
+        emptyMsg.style.display = 'block';
+      } else {
+        emptyMsg.style.display = 'none';
+      }
+    });
+  });
+}

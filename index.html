@@ -136,8 +136,16 @@
         <p>Discover our first curated pieces, available for early pre-order.</p>
       </div>
 
-      <div class="product-grid">
-        <div class="product-card reveal">
+      <div class="category-filter-wrap reveal">
+        <button class="filter-btn active" data-filter="all">All</button>
+        <button class="filter-btn" data-filter="pendants">Pendants</button>
+        <button class="filter-btn" data-filter="rings">Finger Rings</button>
+        <button class="filter-btn" data-filter="earrings">Earrings</button>
+        <button class="filter-btn" data-filter="bracelets">Bracelets</button>
+      </div>
+
+      <div class="product-grid" id="productGrid">
+        <div class="product-card reveal" data-category="pendants">
           <div class="product-img-wrap">
             <img src="shell-pearl-pendant.jpg" alt="Shell & Pearl Pendant Necklace" loading="lazy" />
           </div>
@@ -148,6 +156,11 @@
           </div>
         </div>
         <!-- More products can be added here -->
+      </div>
+      
+      <div id="emptyCategoryMsg" class="empty-category-msg" style="display: none;">
+        <p>More styles are being curated for this collection.</p>
+        <p>Join the waitlist to be notified when they drop.</p>
       </div>
     </section>
 

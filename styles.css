@@ -210,6 +210,51 @@ h2 { font-size: clamp(2.5rem, 4vw, 3.5rem); line-height: 1.15; letter-spacing: -
 }
 
 /* SHOP SECTION */
+.category-filter-wrap {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 40px;
+}
+.filter-btn {
+  background: transparent;
+  border: 1px solid var(--line);
+  padding: 8px 20px;
+  border-radius: 999px;
+  font-family: var(--font-sans);
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--charcoal);
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+.filter-btn:hover {
+  border-color: var(--navy);
+}
+.filter-btn.active {
+  background: var(--navy);
+  color: var(--white);
+  border-color: var(--navy);
+}
+.empty-category-msg {
+  text-align: center;
+  padding: 40px 20px;
+  background: rgba(255,255,255,0.5);
+  border-radius: var(--radius-md);
+  border: 1px dashed var(--line);
+  color: var(--muted);
+  font-family: var(--font-sans);
+}
+.empty-category-msg p {
+  margin: 0;
+}
+.empty-category-msg p:last-child {
+  margin-top: 8px;
+  font-weight: 500;
+  color: var(--navy);
+}
+
 .product-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
