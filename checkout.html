@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Discover PANOOJA, an upcoming jewellery brand offering modern anti-tarnish earrings, rings, pendants, chains, kada and everyday jewellery. Join the early-access list." />
+  <meta name="theme-color" content="#FAF7F2" />
+  
+  <title>PANOOJA | Modern Anti-Tarnish Jewellery</title>
+  
+  <link rel="icon" type="image/svg+xml" href="favicon.svg" />
+  
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Playfair+Display:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
+  
+  <link rel="stylesheet" href="styles.css?v=2" />
+</head>
+<body>
+  <div class="announcement">Launching soon · Join the early-access list for first-drop benefits</div>
+
+  <header class="site-header" id="top">
+    <a class="brand" href="#top" aria-label="Panooja home">
+      <img src="logo.png" alt="PANOOJA" class="header-logo" />
+    </a>
+
+    <button class="menu-toggle" aria-label="Open menu" aria-expanded="false">
+      <span></span><span></span>
+    </button>
+
+    <nav class="nav-links" aria-label="Primary navigation">
+      <a href="#collections">Shop</a>
+      <a href="#launch-edit">Launch Edit</a>
+      <a href="#story">About</a>
+      <a href="#promise">Why PANOOJA</a>
+      <a href="#faq">FAQ</a>
+      <a href="https://www.instagram.com/thepanoojajweles_/" target="_blank" rel="noopener">Instagram</a>
+      <a href="cart.html" class="nav-cart" id="navCart">Cart (<span id="cartCount">0</span>)</a>
+      <a class="nav-cta" href="#waitlist">Get Early Access</a>
+    </nav>
+  </header>
+
+  <main>
+    <section class="section">
+      <div class="section-heading reveal">
+        <h1>Checkout</h1>
+        <p>Enter your details to complete your order. Payment will be collected on delivery.</p>
+      </div>
+      
+      <div class="checkout-container reveal" style="max-width: 600px; margin: 0 auto; background: var(--white); padding: 40px; border-radius: var(--radius-lg); box-shadow: 0 12px 40px rgba(0,0,0,0.04);">
+        <form id="checkoutForm" class="waitlist-form" style="display: flex; flex-direction: column; gap: 20px;">
+          <h3 style="color: var(--navy); margin-bottom: 10px; font-family: var(--font-serif);">Shipping Information</h3>
+          
+          <input type="text" id="checkoutName" name="name" placeholder="Full Name" required style="border-color: var(--line); color: var(--charcoal); background: var(--white);">
+          <input type="email" id="checkoutEmail" name="email" placeholder="Email Address" required style="border-color: var(--line); color: var(--charcoal); background: var(--white);">
+          <input type="tel" id="checkoutPhone" name="phone" placeholder="Phone Number" required style="border-color: var(--line); color: var(--charcoal); background: var(--white);">
+          <textarea id="checkoutAddress" name="address" placeholder="Full Delivery Address (Street, City, PIN Code)" required style="width: 100%; min-height: 100px; padding: 15px 20px; border: 1px solid var(--line); border-radius: var(--radius-md); font-family: var(--font-sans);"></textarea>
+          
+          <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid var(--line);">
+            <div style="display: flex; justify-content: space-between; font-weight: 600; font-size: 1.2rem; color: var(--navy);">
+              <span>Order Total:</span>
+              <span id="checkoutTotal">₹0</span>
+            </div>
+          </div>
+          
+          <button class="button button-primary" type="submit" id="placeOrderBtn" style="margin-top: 20px; width: 100%;">Place Order (COD)</button>
+          <p id="checkoutMessage" style="text-align: center; color: var(--navy);"></p>
+        </form>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="footer-brand">
+      <img src="logo.png" alt="PANOOJA" class="footer-logo" />
+      <span class="brand-tagline">SHINE BEYOND TRENDS</span>
+      <p class="footer-desc">Modern anti-tarnish jewellery designed for everyday confidence.</p>
+    </div>
+    <div class="footer-links">
+      <a href="#collections">Collections</a>
+      <a href="#promise">Our promise</a>
+      <a href="#faq">FAQ</a>
+      <a href="https://www.instagram.com/thepanoojajweles_/" target="_blank" rel="noopener">Instagram</a>
+      <a href="#waitlist">Early access</a>
+    </div>
+    <div class="footer-policies">
+       <a href="#">Privacy Policy</a>
+       <a href="#">Terms & Conditions</a>
+       <a href="#">Shipping Policy</a>
+       <a href="#">Return Policy</a>
+    </div>
+    <p class="copyright">© <span id="year"></span> PANOOJA. All rights reserved.</p>
+  </footer>
+
+  <script src="cart.js"></script>
+  <script src="script.js"></script>
+</body>
+</html>

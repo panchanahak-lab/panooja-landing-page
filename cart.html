@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Discover PANOOJA, an upcoming jewellery brand offering modern anti-tarnish earrings, rings, pendants, chains, kada and everyday jewellery. Join the early-access list." />
+  <meta name="theme-color" content="#FAF7F2" />
+  
+  <title>PANOOJA | Modern Anti-Tarnish Jewellery</title>
+  
+  <link rel="icon" type="image/svg+xml" href="favicon.svg" />
+  
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Playfair+Display:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
+  
+  <link rel="stylesheet" href="styles.css?v=2" />
+</head>
+<body>
+  <div class="announcement">Launching soon · Join the early-access list for first-drop benefits</div>
+
+  <header class="site-header" id="top">
+    <a class="brand" href="#top" aria-label="Panooja home">
+      <img src="logo.png" alt="PANOOJA" class="header-logo" />
+    </a>
+
+    <button class="menu-toggle" aria-label="Open menu" aria-expanded="false">
+      <span></span><span></span>
+    </button>
+
+    <nav class="nav-links" aria-label="Primary navigation">
+      <a href="#collections">Shop</a>
+      <a href="#launch-edit">Launch Edit</a>
+      <a href="#story">About</a>
+      <a href="#promise">Why PANOOJA</a>
+      <a href="#faq">FAQ</a>
+      <a href="https://www.instagram.com/thepanoojajweles_/" target="_blank" rel="noopener">Instagram</a>
+      <a href="cart.html" class="nav-cart" id="navCart">Cart (<span id="cartCount">0</span>)</a>
+      <a class="nav-cta" href="#waitlist">Get Early Access</a>
+    </nav>
+  </header>
+
+  <main>
+    <section class="section">
+      <div class="section-heading reveal">
+        <h1>Your Cart</h1>
+      </div>
+      
+      <div id="cartContainer" class="cart-container reveal">
+        <!-- Cart items will be injected here via JS -->
+      </div>
+      
+      <div id="cartSummary" class="cart-summary reveal" style="display: none;">
+        <div class="cart-total">
+          <span>Subtotal:</span>
+          <span id="cartTotalAmount">₹0</span>
+        </div>
+        <p class="cart-shipping-note">Shipping & taxes calculated at checkout.</p>
+        <a href="checkout.html" class="button button-primary cart-checkout-btn">Proceed to Checkout</a>
+      </div>
+      
+      <div id="emptyCartMsg" class="empty-category-msg" style="display: none;">
+        <p>Your cart is currently empty.</p>
+        <a href="index.html#shop" class="button button-primary" style="margin-top: 1rem;">Continue Shopping</a>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="footer-brand">
+      <img src="logo.png" alt="PANOOJA" class="footer-logo" />
+      <span class="brand-tagline">SHINE BEYOND TRENDS</span>
+      <p class="footer-desc">Modern anti-tarnish jewellery designed for everyday confidence.</p>
+    </div>
+    <div class="footer-links">
+      <a href="#collections">Collections</a>
+      <a href="#promise">Our promise</a>
+      <a href="#faq">FAQ</a>
+      <a href="https://www.instagram.com/thepanoojajweles_/" target="_blank" rel="noopener">Instagram</a>
+      <a href="#waitlist">Early access</a>
+    </div>
+    <div class="footer-policies">
+       <a href="#">Privacy Policy</a>
+       <a href="#">Terms & Conditions</a>
+       <a href="#">Shipping Policy</a>
+       <a href="#">Return Policy</a>
+    </div>
+    <p class="copyright">© <span id="year"></span> PANOOJA. All rights reserved.</p>
+  </footer>
+
+  <script src="cart.js"></script>
+  <script src="script.js"></script>
+</body>
+</html>
