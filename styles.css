@@ -1,12 +1,12 @@
 :root {
-  --navy: #071329;
+  --navy: #020612; /* Deep dark navy matching logo */
   --ivory: #FAF7F2;
-  --gold: #C8A46B;
+  --gold: #1A429C; /* Now Royal Blue matching logo accent */
   --lavender: #A99AC5;
   --charcoal: #252525;
   --grey: #E8E4DE;
   --white: #FFFFFF;
-  --line: rgba(7, 19, 41, 0.1);
+  --line: rgba(2, 6, 18, 0.1);
   --radius-lg: 24px;
   --radius-md: 12px;
   --font-serif: 'Playfair Display', Georgia, serif;
