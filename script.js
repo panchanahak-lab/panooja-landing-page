@@ -147,3 +147,27 @@ if (filterBtns.length > 0) {
     });
   });
 }
+
+// Logic for clicking big category cards in Collections section
+const categoryTriggers = document.querySelectorAll('.category-trigger');
+if (categoryTriggers.length > 0) {
+  categoryTriggers.forEach(trigger => {
+    trigger.addEventListener('click', (e) => {
+      e.preventDefault(); // Stop immediate jump
+      
+      const targetFilter = trigger.getAttribute('data-filter-target');
+      const targetBtn = document.querySelector(`.filter-btn[data-filter="${targetFilter}"]`);
+      
+      if (targetBtn) {
+        // Trigger the filter button click
+        targetBtn.click();
+        
+        // Smooth scroll to the shop section
+        const shopSection = document.getElementById('shop');
+        if (shopSection) {
+          shopSection.scrollIntoView({ behavior: 'smooth' });
+        }
+      }
+    });
+  });
+}
