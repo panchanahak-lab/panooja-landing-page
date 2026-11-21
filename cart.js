@@ -166,8 +166,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const data = await response.json();
 
-        if (data.ok || response.ok) {
+        if (response.ok && data.ok) {
           checkoutMessage.textContent = 'Order Placed Successfully! We will contact you soon.';
+          checkoutMessage.style.color = 'var(--royal-blue)';
           checkoutForm.reset();
           cart = [];
           saveCart();
@@ -175,15 +176,17 @@ document.addEventListener('DOMContentLoaded', () => {
             window.location.href = 'index.html';
           }, 3000);
         } else {
-          checkoutMessage.textContent = 'There was an issue processing your order. Please try again.';
+          checkoutMessage.textContent = data.message || 'There was an issue processing your order. Please try again.';
+          checkoutMessage.style.color = '#E53E3E';
           placeOrderBtn.disabled = false;
           placeOrderBtn.textContent = 'Place Order (COD)';
         }
       } catch (err) {
-        checkoutMessage.textContent = 'Order Placed Successfully! (Offline Mode)';
-        checkoutForm.reset();
-        cart = [];
-        saveCart();
+        console.error('Order processing error:', err);
+        checkoutMessage.textContent = 'We could not complete your order right now. Please verify your connection or try again later.';
+        checkoutMessage.style.color = '#E53E3E';
+        placeOrderBtn.disabled = false;
+        placeOrderBtn.textContent = 'Place Order (COD)';
       }
     });
   }
