@@ -41,73 +41,79 @@ document.getElementById('year').textContent = new Date().getFullYear();
 
 // Waitlist form handling
 const form = document.getElementById('waitlistForm');
-const formMessage = document.getElementById('formMessage');
-const submitButton = document.getElementById('submitButton') || form.querySelector('button[type="submit"]');
+if (form) {
+  const formMessage = document.getElementById('formMessage');
+  const submitButton = document.getElementById('submitButton') || form.querySelector('button[type="submit"]');
 
-form.addEventListener('submit', async (event) => {
-  event.preventDefault();
-  
-  const formData = new FormData(form);
-  const email = formData.get('email').trim();
-  const name = formData.get('name').trim();
-  const companyWebsite = formData.get('companyWebsite'); // Honeypot
+  form.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    
+    const formData = new FormData(form);
+    const email = formData.get('email').trim();
+    const name = formData.get('name').trim();
+    const companyWebsite = formData.get('companyWebsite'); // Honeypot
 
-  if (!email) {
-    formMessage.textContent = 'Please enter a valid email address.';
-    return;
-  }
+    if (!email) {
+      if (formMessage) formMessage.textContent = 'Please enter a valid email address.';
+      return;
+    }
 
-  // Gather URL tracking parameters
-  const urlParams = new URLSearchParams(window.location.search);
-  
-  const payload = {
-    email,
-    name,
-    companyWebsite,
-    utm_source: urlParams.get('utm_source') || '',
-    utm_medium: urlParams.get('utm_medium') || '',
-    utm_campaign: urlParams.get('utm_campaign') || '',
-    referrer: document.referrer || '',
-    page_url: window.location.href
-  };
+    // Gather URL tracking parameters
+    const urlParams = new URLSearchParams(window.location.search);
+    
+    const payload = {
+      email,
+      name,
+      companyWebsite,
+      utm_source: urlParams.get('utm_source') || '',
+      utm_medium: urlParams.get('utm_medium') || '',
+      utm_campaign: urlParams.get('utm_campaign') || '',
+      referrer: document.referrer || '',
+      page_url: window.location.href
+    };
 
-  submitButton.disabled = true;
-  submitButton.textContent = 'Joining...';
-  formMessage.textContent = '';
+    if (submitButton) {
+      submitButton.disabled = true;
+      submitButton.textContent = 'Joining...';
+    }
+    if (formMessage) formMessage.textContent = '';
 
-  try {
-    const response = await fetch('/api/early-access', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(payload)
-    });
+    try {
+      const response = await fetch('/api/early-access', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload)
+      });
 
-    const data = await response.json();
+      const data = await response.json();
 
-    if (data.ok) {
-      if (data.status === 'existing') {
-        formMessage.textContent = 'You’re already on the PANOOJA early-access list.';
+      if (data.ok) {
+        if (data.status === 'existing') {
+          if (formMessage) formMessage.textContent = 'You’re already on the PANOOJA early-access list.';
+        } else {
+          if (formMessage) formMessage.textContent = 'You’re on the list. We’ll let you know when PANOOJA launches.';
+          form.reset();
+        }
       } else {
-        formMessage.textContent = 'You’re on the list. We’ll let you know when PANOOJA launches.';
-        form.reset();
+        if (data.status === 'invalid') {
+          if (formMessage) formMessage.textContent = 'Please enter a valid email address.';
+        } else {
+          if (formMessage) formMessage.textContent = 'We couldn’t save your details right now. Please try again.';
+        }
       }
-    } else {
-      if (data.status === 'invalid') {
-        formMessage.textContent = 'Please enter a valid email address.';
-      } else {
-        formMessage.textContent = 'We couldn’t save your details right now. Please try again.';
+    } catch (error) {
+      console.error('Submission error:', error);
+      if (formMessage) formMessage.textContent = 'We couldn’t save your details right now. Please try again.';
+    } finally {
+      if (submitButton) {
+        submitButton.disabled = false;
+        submitButton.textContent = 'Join the Early Access List';
       }
     }
-  } catch (error) {
-    console.error('Submission error:', error);
-    formMessage.textContent = 'We couldn’t save your details right now. Please try again.';
-  } finally {
-    submitButton.disabled = false;
-    submitButton.textContent = 'Join the Early Access List';
-  }
-});
+  });
+}
 
 // Category Filter Logic
 const filterBtns = document.querySelectorAll('.filter-btn');
