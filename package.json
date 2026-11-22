@@ -1,0 +1,26 @@
+{
+  "name": "panooja-landing-page",
+  "version": "1.0.0",
+  "description": "",
+  "main": "cart.js",
+  "scripts": {
+    "start": "node server.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/panchanahak-lab/panooja-landing-page.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "bugs": {
+    "url": "https://github.com/panchanahak-lab/panooja-landing-page/issues"
+  },
+  "homepage": "https://github.com/panchanahak-lab/panooja-landing-page#readme",
+  "dependencies": {
+    "dotenv": "^18.0.10",
+    "razorpay": "^2.9.8"
+  }
+}

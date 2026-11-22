@@ -352,20 +352,44 @@ Please confirm my order and share payment instructions / UPI QR code!`;
   window.open(waUrl, '_blank');
 }
 
-// Online Payment Handler via Cashfree
-function payOnlineCashfree() {
-  const nameInput = document.getElementById('checkoutName');
-  const phoneInput = document.getElementById('checkoutPhone');
-  const addressInput = document.getElementById('checkoutAddress');
-  const pincodeInput = document.getElementById('checkoutPincode');
+// =============================================================
+// RAZORPAY STANDARD WEB CHECKOUT INTEGRATION
+// =============================================================
+async function payWithRazorpay(isPageCheckout = false) {
+  const nameEl = isPageCheckout ? document.getElementById('pageCheckoutName') : document.getElementById('checkoutName');
+  const phoneEl = isPageCheckout ? document.getElementById('pageCheckoutPhone') : document.getElementById('checkoutPhone');
+  const addressEl = isPageCheckout ? document.getElementById('pageCheckoutAddress') : document.getElementById('checkoutAddress');
+  const pincodeEl = isPageCheckout ? document.getElementById('pageCheckoutPincode') : document.getElementById('checkoutPincode');
+  const btnEl = isPageCheckout ? document.getElementById('pageCheckoutOnlineBtn') : document.getElementById('checkoutOnlineBtn');
 
-  const name = nameInput ? nameInput.value.trim() : '';
-  const phone = phoneInput ? phoneInput.value.trim() : '';
-  const address = addressInput ? addressInput.value.trim() : '';
-  const pincode = pincodeInput ? pincodeInput.value.trim() : '';
+  const name = nameEl ? nameEl.value.trim() : '';
+  const phone = phoneEl ? phoneEl.value.trim() : '';
+  const address = addressEl ? addressEl.value.trim() : '';
+  const pincode = pincodeEl ? pincodeEl.value.trim() : '';
 
-  if (!name || !phone || !address || !pincode) {
-    alert('Please fill out all shipping details before proceeding with payment.');
+  if (!name) {
+    alert('Please enter your full name.');
+    if (nameEl) nameEl.focus();
+    return;
+  }
+  if (!phone || phone.length < 10) {
+    alert('Please enter a valid 10-digit phone number.');
+    if (phoneEl) phoneEl.focus();
+    return;
+  }
+  if (!address) {
+    alert('Please enter your complete delivery address.');
+    if (addressEl) addressEl.focus();
+    return;
+  }
+  if (!pincode || pincode.length < 6) {
+    alert('Please enter a valid 6-digit delivery pincode.');
+    if (pincodeEl) pincodeEl.focus();
+    return;
+  }
+
+  if (cart.length === 0) {
+    alert('Your shopping bag is empty.');
     return;
   }
 
@@ -375,7 +399,233 @@ function payOnlineCashfree() {
   const shippingFee = (subtotal === 0 || isFreeShipping) ? 0 : STANDARD_SHIPPING_FEE;
   const grandTotal = Math.max(0, subtotal - discountInfo.amount + shippingFee);
 
-  alert(`Initiating secure Cashfree UPI & Card checkout for ₹${grandTotal.toLocaleString('en-IN')}.\n\nIf you prefer instant WhatsApp confirmation, click "Order via WhatsApp".`);
+  // Minimum amount validation: 100 paise (₹1)
+  if (grandTotal < 1) {
+    alert('Invalid order amount. Minimum checkout amount is ₹1.');
+    return;
+  }
+
+  const originalBtnText = btnEl ? btnEl.innerHTML : 'Pay Online';
+  if (btnEl) {
+    btnEl.disabled = true;
+    btnEl.textContent = 'Initiating Secure Checkout...';
+  }
+
+  // Ensure Razorpay SDK is loaded
+  if (typeof window.Razorpay === 'undefined') {
+    try {
+      await loadRazorpayScript();
+    } catch (err) {
+      alert('Unable to load Razorpay checkout SDK. Please check your internet connection.');
+      if (btnEl) {
+        btnEl.disabled = false;
+        btnEl.innerHTML = originalBtnText;
+      }
+      return;
+    }
+  }
+
+  try {
+    // Step 1: Call Backend to Create Order
+    const orderRes = await fetch('/api/create-order', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        amount: Math.round(grandTotal * 100), // Razorpay requires amount in paise
+        amount_in_rupees: grandTotal,
+        currency: 'INR',
+        receipt: `rcpt_${Date.now()}`,
+        customer_name: name,
+        customer_phone: phone,
+        delivery_address: `${address}, PIN: ${pincode}`
+      })
+    });
+
+    const orderData = await orderRes.json();
+
+    if (!orderRes.ok || !orderData.ok) {
+      throw new Error(orderData.error || 'Failed to initialize payment order on server.');
+    }
+
+    // Step 2: Open Razorpay Standard Checkout Modal
+    const options = {
+      key: orderData.key_id,
+      amount: orderData.amount,
+      currency: orderData.currency || 'INR',
+      name: 'PANOOJA',
+      description: 'Waterproof & Anti-Tarnish Jewellery',
+      image: 'https://www.panooja.com/logo.png',
+      order_id: orderData.order_id,
+      prefill: {
+        name: name,
+        contact: phone
+      },
+      notes: {
+        address: `${address}, PIN: ${pincode}`
+      },
+      theme: {
+        color: '#1B69E8'
+      },
+      modal: {
+        ondismiss: function() {
+          if (btnEl) {
+            btnEl.disabled = false;
+            btnEl.innerHTML = originalBtnText;
+          }
+          console.log('Razorpay payment modal closed by customer.');
+        }
+      },
+      handler: async function(paymentResponse) {
+        // Step 3: Verify Payment Signature via Backend
+        if (btnEl) {
+          btnEl.disabled = true;
+          btnEl.textContent = 'Verifying Payment Signature...';
+        }
+
+        try {
+          const verifyRes = await fetch('/api/verify-payment', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              razorpay_order_id: paymentResponse.razorpay_order_id,
+              razorpay_payment_id: paymentResponse.razorpay_payment_id,
+              razorpay_signature: paymentResponse.razorpay_signature
+            })
+          });
+
+          const verifyData = await verifyRes.json();
+
+          if (verifyRes.ok && verifyData.ok) {
+            // Payment verified successfully!
+            cart = [];
+            appliedCoupon = null;
+            saveCart();
+            closeCheckoutModal();
+
+            showPaymentSuccessDialog({
+              orderId: paymentResponse.razorpay_order_id,
+              paymentId: paymentResponse.razorpay_payment_id,
+              amount: grandTotal,
+              name: name,
+              phone: phone,
+              address: address,
+              pincode: pincode
+            });
+
+            if (isPageCheckout) {
+              const msgEl = document.getElementById('pageCheckoutMessage');
+              if (msgEl) {
+                msgEl.textContent = `✓ Payment Verified! Order ID: ${paymentResponse.razorpay_order_id}`;
+                msgEl.style.color = '#10B981';
+              }
+            }
+
+          } else {
+            alert('Payment Signature Verification Failed: ' + (verifyData.error || 'Please contact PANOOJA support.'));
+            if (btnEl) {
+              btnEl.disabled = false;
+              btnEl.innerHTML = originalBtnText;
+            }
+          }
+
+        } catch (verifyErr) {
+          console.error('Payment verification error:', verifyErr);
+          alert('Network error while verifying payment: ' + verifyErr.message);
+          if (btnEl) {
+            btnEl.disabled = false;
+            btnEl.innerHTML = originalBtnText;
+          }
+        }
+      }
+    };
+
+    const rzp = new window.Razorpay(options);
+
+    // Handle Payment Failed Event
+    rzp.on('payment.failed', function(failureResponse) {
+      console.error('Razorpay Payment Failed:', failureResponse.error);
+      const errDesc = failureResponse.error ? failureResponse.error.description : 'Transaction cancelled or declined.';
+      alert(`Payment Incomplete: ${errDesc}`);
+      if (btnEl) {
+        btnEl.disabled = false;
+        btnEl.innerHTML = originalBtnText;
+      }
+    });
+
+    rzp.open();
+
+  } catch (err) {
+    console.error('Razorpay Checkout Init Error:', err);
+    alert('Unable to start payment checkout: ' + err.message);
+    if (btnEl) {
+      btnEl.disabled = false;
+      btnEl.innerHTML = originalBtnText;
+    }
+  }
+}
+
+// Helper to dynamically load checkout.js if not already present
+function loadRazorpayScript() {
+  return new Promise((resolve, reject) => {
+    if (typeof window.Razorpay !== 'undefined') {
+      return resolve();
+    }
+    const script = document.createElement('script');
+    script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+    script.async = true;
+    script.onload = () => resolve();
+    script.onerror = () => reject(new Error('Failed to load Razorpay SDK'));
+    document.head.appendChild(script);
+  });
+}
+
+// Payment Success Confirmation Modal
+function showPaymentSuccessDialog(details) {
+  const existing = document.getElementById('paymentSuccessModal');
+  if (existing) existing.remove();
+
+  const modal = document.createElement('div');
+  modal.id = 'paymentSuccessModal';
+  modal.style.cssText = `
+    position: fixed; inset: 0; background: rgba(5,5,5,0.85); backdrop-filter: blur(6px);
+    display: flex; align-items: center; justify-content: center; z-index: 9999; padding: 20px;
+    animation: fadeIn 0.3s ease;
+  `;
+
+  modal.innerHTML = `
+    <div style="background: #FFFFFF; max-width: 500px; width: 100%; border-radius: 8px; padding: 36px 28px; text-align: center; box-shadow: 0 20px 60px rgba(0,0,0,0.3); border: 1px solid #D9DEE7;">
+      <div style="width: 60px; height: 60px; background: rgba(16, 185, 129, 0.1); border: 2px solid #10B981; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 18px; color: #10B981; font-size: 1.8rem;">
+        ✓
+      </div>
+      <h3 style="font-family: var(--font-serif); font-size: 2rem; color: #050505; margin: 0 0 8px;">Payment Successful!</h3>
+      <p style="font-size: 0.95rem; color: #242424; margin: 0 0 20px; line-height: 1.5;">Thank you for shopping with PANOOJA. Your order has been placed and is scheduled for express dispatch.</p>
+      
+      <div style="background: #F5F6F8; border: 1px solid #D9DEE7; border-radius: 6px; padding: 16px; text-align: left; font-size: 0.85rem; margin-bottom: 24px; line-height: 1.8; color: #242424;">
+        <div><strong>Order ID:</strong> ${details.orderId}</div>
+        <div><strong>Payment ID:</strong> ${details.paymentId}</div>
+        <div><strong>Amount Paid:</strong> ₹${details.amount.toLocaleString('en-IN')}</div>
+        <div><strong>Customer:</strong> ${details.name} (${details.phone})</div>
+      </div>
+
+      <button type="button" class="button button-primary" id="successModalCloseBtn" style="width: 100%;">
+        Continue Exploring
+      </button>
+    </div>
+  `;
+
+  document.body.appendChild(modal);
+
+  const closeBtn = document.getElementById('successModalCloseBtn');
+  if (closeBtn) {
+    closeBtn.addEventListener('click', () => {
+      modal.remove();
+      window.location.href = 'index.html#shop';
+    });
+  }
 }
 
 // DOM Setup
@@ -485,7 +735,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
   const checkoutOnlineBtn = document.getElementById('checkoutOnlineBtn');
   if (checkoutOnlineBtn) {
-    checkoutOnlineBtn.addEventListener('click', payOnlineCashfree);
+    checkoutOnlineBtn.addEventListener('click', () => payWithRazorpay(false));
   }
 
   // Global Add to Cart Click Handler (Catches all .add-to-cart-btn clicks across the page)
@@ -574,3 +824,10 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 });
+
+// Expose on window for direct invocation
+window.payWithRazorpay = payWithRazorpay;
+window.payOnlineCashfree = payWithRazorpay; // Backward compatibility alias
+window.openCartDrawer = openCartDrawer;
+window.closeCartDrawer = closeCartDrawer;
+window.addToCart = addToCart;
