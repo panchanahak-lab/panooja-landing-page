@@ -3,10 +3,9 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="description" content="Discover PANOOJA, an upcoming jewellery brand offering modern anti-tarnish earrings, rings, pendants, chains, kada and everyday jewellery. Join the early-access list." />
+  <title>Your Bag — PANOOJA | Waterproof &amp; Anti-Tarnish Jewellery India</title>
+  <meta name="description" content="View your PANOOJA shopping bag. Waterproof, anti-tarnish jewellery with free shipping on orders above ₹799." />
   <meta name="theme-color" content="#050505" />
-  
-  <title>PANOOJA | Modern Anti-Tarnish Jewellery</title>
   
   <link rel="icon" type="image/svg+xml" href="favicon.svg" />
   
@@ -14,56 +13,67 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,600&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   
-  <link rel="stylesheet" href="styles.css?v=5" />
+  <link rel="stylesheet" href="styles.css?v=6" />
 </head>
 <body>
-  <div class="announcement"><span class="announcement-dot"></span> Launching soon · Join the early-access list for first-drop benefits</div>
+  <div class="announcement">
+    <span class="announcement-dot"></span> FREE SHIPPING ABOVE ₹799 · USE CODE WELCOME10 FOR 10% OFF YOUR FIRST ORDER
+  </div>
 
   <header class="site-header" id="top">
-    <a class="brand" href="index.html" aria-label="Panooja home">
+    <a class="brand" href="index.html" aria-label="PANOOJA Home">
       <img src="logo.png" alt="PANOOJA" class="header-logo" />
     </a>
 
-    <div class="header-actions" style="display: flex; align-items: center; gap: 16px;">
-      <a href="cart.html" class="nav-cart" id="navCart">Cart (<span id="cartCount">0</span>)</a>
+    <div class="header-actions">
+      <a href="cart.html" class="nav-cart" id="navCart" aria-label="View Shopping Cart">
+        <svg class="cart-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path><line x1="3" y1="6" x2="21" y2="6"></line><path d="M16 10a4 4 0 0 1-8 0"></path></svg>
+        <span>CART (<span id="cartCount">0</span>)</span>
+      </a>
       <button class="menu-toggle" aria-label="Open menu" aria-expanded="false">
-      <span></span><span></span>
-    </button>
+        <span></span><span></span>
+      </button>
     </div>
 
     <nav class="nav-links" aria-label="Primary navigation">
-      <a href="index.html#collections">Shop</a>
-      <a href="index.html#launch-edit">Launch Edit</a>
-      <a href="index.html#story">About</a>
+      <a href="index.html#shop">Shop All</a>
+      <a href="index.html#collections">Categories</a>
+      <a href="index.html#launch-edit">The Edit</a>
+      <a href="index.html#story">Our Story</a>
       <a href="index.html#promise">Why PANOOJA</a>
       <a href="index.html#faq">FAQ</a>
       <a href="https://www.instagram.com/thepanoojajweles_/" target="_blank" rel="noopener">Instagram</a>
-      <a class="nav-cta" href="index.html#waitlist">Get Early Access</a>
+      <a class="nav-cta" href="index.html#shop">Shop Now</a>
     </nav>
   </header>
 
   <main>
     <section class="section">
       <div class="section-heading reveal">
-        <h1>Your Cart</h1>
+        <p class="eyebrow">SHOPPING BAG</p>
+        <h1>Your Selected Pieces</h1>
       </div>
       
       <div id="cartContainer" class="cart-container reveal">
-        <!-- Cart items will be injected here via JS -->
+        <!-- Injected via JS -->
       </div>
       
-      <div id="cartSummary" class="cart-summary reveal" style="display: none;">
-        <div class="cart-total">
+      <div id="cartSummary" class="cart-summary reveal" style="display: none; max-width: 600px; margin: 30px auto 0; padding: 24px; background: var(--soft-cool-white); border-radius: var(--radius-sm); border: 1px solid var(--light-grey);">
+        <div class="cart-total" style="display: flex; justify-content: space-between; font-size: 1.25rem; font-weight: 700; color: var(--black); margin-bottom: 12px;">
           <span>Subtotal:</span>
           <span id="cartTotalAmount">₹0</span>
         </div>
-        <p class="cart-shipping-note">Shipping & taxes calculated at checkout.</p>
-        <a href="checkout.html" class="button button-primary cart-checkout-btn">Proceed to Checkout</a>
+        <p class="cart-shipping-note" style="font-size: 0.85rem; color: var(--muted); margin-bottom: 20px;">Free Express shipping on orders above ₹799 across India.</p>
+        <div style="display: flex; gap: 14px;">
+          <a href="index.html#shop" class="button button-secondary" style="flex: 1; text-align: center;">Continue Shopping</a>
+          <a href="checkout.html" class="button button-primary cart-checkout-btn" style="flex: 1; text-align: center;">Proceed to Checkout</a>
+        </div>
       </div>
       
-      <div id="emptyCartMsg" class="empty-category-msg" style="display: none;">
-        <p>Your cart is currently empty.</p>
-        <a href="index.html#shop" class="button button-primary" style="margin-top: 1rem;">Continue Shopping</a>
+      <div id="emptyCartMsg" class="empty-category-msg" style="display: none; text-align: center; padding: 60px 20px;">
+        <h3 style="font-family: var(--font-serif); font-size: 2rem; margin-bottom: 12px;">Your shopping bag is empty</h3>
+        <p style="color: var(--muted); margin-bottom: 24px;">Discover our waterproof, anti-tarnish pieces made for everyday confidence.</p>
+        <a href="index.html#shop" class="button button-primary">Explore Jewellery</a>
       </div>
     </section>
   </main>
@@ -71,25 +81,26 @@
   <footer>
     <div class="footer-brand">
       <img src="logo.png" alt="PANOOJA" class="footer-logo" />
-      <p class="footer-desc">Modern anti-tarnish jewellery designed for everyday confidence.</p>
+      <p class="footer-desc">Modern anti-tarnish and waterproof jewellery designed for everyday confidence.</p>
     </div>
     <div class="footer-links">
+      <a href="index.html#shop">Shop All</a>
       <a href="index.html#collections">Collections</a>
-      <a href="index.html#promise">Our promise</a>
+      <a href="index.html#promise">Our Promise</a>
       <a href="index.html#faq">FAQ</a>
       <a href="https://www.instagram.com/thepanoojajweles_/" target="_blank" rel="noopener">Instagram</a>
-      <a href="index.html#waitlist">Early access</a>
+      <a href="index.html#newsletter">VIP 10% Off</a>
     </div>
     <div class="footer-policies">
-       <a href="#">Privacy Policy</a>
-       <a href="#">Terms & Conditions</a>
-       <a href="#">Shipping Policy</a>
-       <a href="#">Return Policy</a>
+       <a href="index.html#promise">Waterproof Guarantee</a>
+       <a href="index.html#faq">Shipping Policy</a>
+       <a href="index.html#faq">7-Day Exchanges</a>
+       <a href="https://wa.me/919876543210" target="_blank" rel="noopener">WhatsApp Support</a>
     </div>
     <p class="copyright">© <span id="year"></span> PANOOJA. All rights reserved.</p>
   </footer>
 
-  <script src="cart.js"></script>
-  <script src="script.js"></script>
+  <script src="cart.js?v=6"></script>
+  <script src="script.js?v=6"></script>
 </body>
 </html>
