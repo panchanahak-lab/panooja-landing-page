@@ -30,7 +30,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,600&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   
-  <link rel="stylesheet" href="styles.css?v=6" />
+  <link rel="stylesheet" href="styles.css?v=7" />
 
   <!-- Structured Data JSON-LD -->
   <script type="application/ld+json">
@@ -550,8 +550,17 @@
   <div class="quick-view-modal" id="quickViewModal" role="dialog" aria-modal="true" aria-labelledby="quickViewTitle">
     <button class="quick-view-close" id="closeQuickView" aria-label="Close modal">&times;</button>
     <div class="quick-view-body">
-      <div class="quick-view-image-wrap">
-        <img id="quickViewImg" src="" alt="PANOOJA Jewellery" referrerPolicy="no-referrer" />
+      <div class="quick-view-image-wrap" id="quickViewImageWrap">
+        <div class="carousel-viewport" id="quickViewCarousel">
+          <div class="carousel-track" id="quickViewTrack">
+            <div class="carousel-slide">
+              <img id="quickViewImg" src="" alt="PANOOJA Jewellery" referrerPolicy="no-referrer" />
+            </div>
+          </div>
+          <div class="carousel-dots" id="quickViewDots"></div>
+          <button type="button" class="carousel-arrow carousel-arrow-prev" id="quickViewPrev" aria-label="Previous photo">‹</button>
+          <button type="button" class="carousel-arrow carousel-arrow-next" id="quickViewNext" aria-label="Next photo">›</button>
+        </div>
         <span class="product-offer-badge" id="quickViewOfferBadge" style="display: none;"></span>
       </div>
       <div class="quick-view-details">
@@ -617,7 +626,7 @@
   </a>
 
   <!-- Scripts -->
-  <script src="cart.js?v=6"></script>
-  <script src="script.js?v=6"></script>
+  <script src="cart.js?v=7"></script>
+  <script src="script.js?v=7"></script>
 </body>
 </html>

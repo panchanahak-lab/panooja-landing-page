@@ -90,14 +90,13 @@ if (newsletterForm) {
     };
 
     try {
-      const response = await fetch('/api/early-access', {
+      await fetch('/api/early-access', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       });
-      // Regardless of endpoint presence, display the promo coupon
     } catch (e) {
-      // Local or static environment fallback
+      // Local or static fallback
     }
 
     // Reveal the 10% Off Coupon Code Card
@@ -139,6 +138,237 @@ if (copyCouponBtn) {
 }
 
 // =============================================================
+// AUTOMATIC PRODUCT IMAGE CAROUSEL CLASS
+// Handles auto-sliding every 3s, pause on touch/hold/hover,
+// swipe gestures, and dot indicators.
+// =============================================================
+class ProductCarousel {
+  constructor(viewportEl, images, options = {}) {
+    this.viewport = viewportEl;
+    this.track = viewportEl.querySelector('.carousel-track');
+    this.dots = viewportEl.querySelectorAll('.carousel-dot');
+    this.prevBtn = viewportEl.querySelector('.carousel-arrow-prev');
+    this.nextBtn = viewportEl.querySelector('.carousel-arrow-next');
+    this.images = images || [];
+    this.total = this.images.length;
+    this.currentIndex = 0;
+    this.intervalTime = 3000; // 3 seconds loop
+    this.timer = null;
+    this.isPaused = false;
+    this.isPointerDown = false;
+    this.startX = 0;
+    this.startY = 0;
+    this.diffX = 0;
+    this.diffY = 0;
+    this.isSwiping = false;
+    this.onImageClick = options.onImageClick || null;
+
+    if (this.total > 1) {
+      this.bindEvents();
+      this.startTimer();
+    }
+  }
+
+  startTimer() {
+    this.stopTimer();
+    if (this.total <= 1 || this.isPaused) return;
+    this.timer = setInterval(() => {
+      this.next();
+    }, this.intervalTime);
+  }
+
+  stopTimer() {
+    if (this.timer) {
+      clearInterval(this.timer);
+      this.timer = null;
+    }
+  }
+
+  pause() {
+    this.isPaused = true;
+    this.stopTimer();
+  }
+
+  resume() {
+    this.isPaused = false;
+    this.startTimer();
+  }
+
+  goTo(index) {
+    if (this.total <= 0) return;
+    // Continuous loop wrap-around: 1 -> 2 -> 3 -> 1
+    this.currentIndex = (index + this.total) % this.total;
+    if (this.track) {
+      this.track.style.transform = `translateX(-${this.currentIndex * 100}%)`;
+    }
+    this.updateDots();
+  }
+
+  next() {
+    this.goTo(this.currentIndex + 1);
+  }
+
+  prev() {
+    this.goTo(this.currentIndex - 1);
+  }
+
+  updateDots() {
+    if (!this.dots || this.dots.length === 0) return;
+    this.dots.forEach((dot, idx) => {
+      if (idx === this.currentIndex) {
+        dot.classList.add('active');
+        dot.setAttribute('aria-current', 'true');
+      } else {
+        dot.classList.remove('active');
+        dot.removeAttribute('aria-current');
+      }
+    });
+  }
+
+  bindEvents() {
+    // 1. Desktop Hover: pause on mouseenter, resume on mouseleave
+    this.viewport.addEventListener('mouseenter', () => {
+      this.pause();
+    });
+    this.viewport.addEventListener('mouseleave', () => {
+      if (!this.isPointerDown) {
+        this.resume();
+      }
+    });
+
+    // 2. Dot Indicators Click / Tap
+    if (this.dots) {
+      this.dots.forEach(dot => {
+        dot.addEventListener('click', (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          const targetIndex = parseInt(dot.getAttribute('data-index'), 10) || 0;
+          this.goTo(targetIndex);
+          this.stopTimer();
+          if (!this.isPaused) this.startTimer();
+        });
+      });
+    }
+
+    // 3. Arrow Controls
+    if (this.prevBtn) {
+      this.prevBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        this.prev();
+        this.stopTimer();
+        if (!this.isPaused) this.startTimer();
+      });
+    }
+    if (this.nextBtn) {
+      this.nextBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        this.next();
+        this.stopTimer();
+        if (!this.isPaused) this.startTimer();
+      });
+    }
+
+    // 4. Pointer & Touch Interactions (Unified Mobile & Desktop)
+    const handleStart = (clientX, clientY) => {
+      this.isPointerDown = true;
+      this.pause(); // Immediately pause auto-slide on touch / hold
+      this.startX = clientX;
+      this.startY = clientY;
+      this.diffX = 0;
+      this.diffY = 0;
+      this.isSwiping = false;
+    };
+
+    const handleMove = (clientX, clientY) => {
+      if (!this.isPointerDown) return;
+      this.diffX = clientX - this.startX;
+      this.diffY = clientY - this.startY;
+
+      if (Math.abs(this.diffX) > Math.abs(this.diffY) && Math.abs(this.diffX) > 8) {
+        this.isSwiping = true;
+      }
+    };
+
+    const handleEnd = () => {
+      if (!this.isPointerDown) return;
+      this.isPointerDown = false;
+
+      // Handle swipe gesture
+      if (this.isSwiping) {
+        if (this.diffX < -30) {
+          this.next();
+        } else if (this.diffX > 30) {
+          this.prev();
+        }
+      }
+
+      // Resume auto-slide after brief release buffer
+      setTimeout(() => {
+        this.isSwiping = false;
+        this.resume();
+      }, 600);
+    };
+
+    // Mobile touch events
+    this.viewport.addEventListener('touchstart', (e) => {
+      if (e.touches && e.touches[0]) {
+        handleStart(e.touches[0].clientX, e.touches[0].clientY);
+      }
+    }, { passive: true });
+
+    this.viewport.addEventListener('touchmove', (e) => {
+      if (e.touches && e.touches[0]) {
+        handleMove(e.touches[0].clientX, e.touches[0].clientY);
+      }
+    }, { passive: true });
+
+    this.viewport.addEventListener('touchend', () => {
+      handleEnd();
+    }, { passive: true });
+
+    this.viewport.addEventListener('touchcancel', () => {
+      handleEnd();
+    }, { passive: true });
+
+    // Desktop mouse hold events
+    this.viewport.addEventListener('mousedown', (e) => {
+      if (e.button !== 0) return;
+      handleStart(e.clientX, e.clientY);
+    });
+
+    window.addEventListener('mouseup', () => {
+      if (this.isPointerDown) {
+        handleEnd();
+      }
+    });
+
+    // Delegated click on image for Quick View trigger
+    if (this.onImageClick) {
+      this.viewport.addEventListener('click', (e) => {
+        if (e.target.closest('.carousel-dots') || e.target.closest('.carousel-arrow')) {
+          return;
+        }
+        if (Math.abs(this.diffX) > 10) {
+          return; // was swiping
+        }
+        this.onImageClick(e);
+      });
+    }
+  }
+
+  destroy() {
+    this.stopTimer();
+    this.isPaused = true;
+  }
+}
+
+// Active Carousels registry to prevent memory leaks during re-filtering
+let activeCarousels = [];
+let quickViewCarouselInstance = null;
+
+// =============================================================
 // LIVE GOOGLE SHEETS PRODUCT CATALOG INTEGRATION
 // =============================================================
 const GOOGLE_SHEETS_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQ1yF6fF2S8x5dH3u24uH2DNt8WOl9xZ_UTLA6JNmAWbn1XUroDBjS6M-GPXlSHLLtkSaXTllKNQz-n/pub?gid=0&single=true&output=csv';
@@ -156,7 +386,63 @@ let loadedProductsMap = new Map();
 let currentQuickViewProduct = null;
 let currentQuickViewQty = 1;
 
-// CSV Parser handling quotes and line breaks
+// Collect all non-empty, unique image URLs from the Google Sheet columns:
+// Direct Image URL (Auto), Direct Image URL 2 (Auto), Direct Image URL 3 (Auto), Direct Image URL 4 (Auto)
+function extractProductImages(item, categoryKey) {
+  const directCols = [
+    item['Direct Image URL (Auto)'],
+    item['Direct Image URL 2 (Auto)'],
+    item['Direct Image URL 3 (Auto)'],
+    item['Direct Image URL 4 (Auto)'],
+    item['Google Drive Share Link'],
+    item['Drive Link 2'],
+    item['Drive Link 3'],
+    item['Drive Link 4']
+  ];
+
+  const collected = [];
+  const seen = new Set();
+
+  directCols.forEach(raw => {
+    if (!raw) return;
+    let url = String(raw).trim();
+    if (!url || url.toLowerCase() === 'none' || url.toLowerCase() === 'null') return;
+
+    // Convert standard Google Drive file URL to direct lh3 link
+    const driveMatch = url.match(/\/file\/d\/([a-zA-Z0-9_-]+)/) || url.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+    if (driveMatch && driveMatch[1] && !url.includes('lh3.googleusercontent.com')) {
+      url = `https://lh3.googleusercontent.com/d/${driveMatch[1]}`;
+    }
+
+    // Skip placeholder sample IDs if present
+    if (url.includes('SAMPLE_FILE_ID')) {
+      return;
+    }
+
+    if (!seen.has(url)) {
+      seen.add(url);
+      collected.push(url);
+    }
+  });
+
+  // If the sheet has real images, return them
+  if (collected.length > 0) {
+    return collected;
+  }
+
+  // Multi-image sample fallback gallery per category for testing and rich preview
+  const multiSamples = {
+    earrings: ['earrings.jpg', 'hero.jpg', 'story.jpg'],
+    rings: ['rings.jpg', 'story.jpg', 'hero.jpg'],
+    pendants: ['pendants.jpg', 'shell-pearl-pendant.jpg', 'hero.jpg'],
+    bracelets: ['bracelets.jpg', 'story.jpg', 'hero.jpg'],
+    default: ['hero.jpg', 'earrings.jpg', 'rings.jpg']
+  };
+
+  return multiSamples[categoryKey] || multiSamples.default;
+}
+
+// CSV Parser handling quotes, commas, and line breaks
 function parseCSV(text) {
   const rows = [];
   let currentRow = [];
@@ -266,7 +552,7 @@ function injectProductSchema(products) {
         '@type': 'Product',
         'name': item.name,
         'description': item.desc || 'Waterproof and anti-tarnish 316L stainless steel jewellery by PANOOJA.',
-        'image': item.img,
+        'image': item.images,
         'sku': item.sku,
         'offers': {
           '@type': 'Offer',
@@ -291,6 +577,10 @@ async function loadLiveProducts() {
   const productGrid = document.getElementById('productGrid');
   const emptyMsg = document.getElementById('emptyCategoryMsg');
   if (!productGrid) return;
+
+  // Clear existing carousels
+  activeCarousels.forEach(c => c.destroy());
+  activeCarousels = [];
 
   // Render shimmer skeletons
   productGrid.innerHTML = `
@@ -358,12 +648,9 @@ async function loadLiveProducts() {
       const mrpNum = parseInt(rawMRP.replace(/[^0-9]/g, ''), 10) || 0;
       const discount = item['Discount %'] || '';
 
-      // Direct image URL with category fallback
-      let imageUrl = item['Direct Image URL (Auto)'] || '';
+      // Collect all non-empty image URLs (Direct Image URL Auto 1-4)
+      const images = extractProductImages(item, categoryKey);
       const fallbackImg = CATEGORY_FALLBACKS[categoryKey] || CATEGORY_FALLBACKS.default;
-      if (!imageUrl || imageUrl.includes('SAMPLE_FILE_ID')) {
-        imageUrl = fallbackImg;
-      }
 
       const productObj = {
         sku,
@@ -380,7 +667,8 @@ async function loadLiveProducts() {
         finalPrice: finalPriceNum,
         mrp: mrpNum,
         discount,
-        img: imageUrl,
+        images,
+        img: images[0] || fallbackImg,
         fallbackImg
       };
 
@@ -406,6 +694,28 @@ async function loadLiveProducts() {
         badgesHtml += `<span class="product-stock-badge low-stock">Low Stock</span>`;
       }
 
+      // Build Carousel Slides HTML
+      const slidesHtml = images.map((imgUrl, i) => `
+        <div class="carousel-slide">
+          <img src="${escapeHTML(imgUrl)}" alt="${escapeHTML(name)} - Photo ${i + 1}" loading="lazy" referrerPolicy="no-referrer" onerror="if(this.src!=='${fallbackImg}'){this.src='${fallbackImg}';}" />
+        </div>
+      `).join('');
+
+      // Build Dot Indicators HTML
+      const dotsHtml = images.length > 1 ? `
+        <div class="carousel-dots" aria-label="Image slide controls">
+          ${images.map((_, i) => `
+            <button type="button" class="carousel-dot ${i === 0 ? 'active' : ''}" data-index="${i}" aria-label="Jump to slide ${i + 1}"></button>
+          `).join('')}
+        </div>
+      ` : '';
+
+      // Build Nav Arrows HTML
+      const arrowsHtml = images.length > 1 ? `
+        <button type="button" class="carousel-arrow carousel-arrow-prev" aria-label="Previous image">‹</button>
+        <button type="button" class="carousel-arrow carousel-arrow-next" aria-label="Next image">›</button>
+      ` : '';
+
       // Price Row
       let priceHtml = `<span class="product-final-price">₹${finalPriceNum.toLocaleString('en-IN')}</span>`;
       if (mrpNum > finalPriceNum) {
@@ -418,12 +728,18 @@ async function loadLiveProducts() {
       // Action Button
       const buttonHtml = isOutOfStock
         ? `<button class="button button-disabled add-to-cart-btn" disabled="disabled">Out of Stock</button>`
-        : `<button class="button button-primary add-to-cart-btn" data-id="${escapeHTML(sku)}" data-title="${escapeHTML(name)}" data-price="${finalPriceNum}" data-img="${escapeHTML(imageUrl)}" data-category="${escapeHTML(category)}">Add to Cart</button>`;
+        : `<button class="button button-primary add-to-cart-btn" data-id="${escapeHTML(sku)}" data-title="${escapeHTML(name)}" data-price="${finalPriceNum}" data-img="${escapeHTML(images[0])}" data-category="${escapeHTML(category)}">Add to Cart</button>`;
 
       card.innerHTML = `
-        <div class="product-img-wrap quick-view-trigger" data-sku="${escapeHTML(sku)}">
+        <div class="product-img-wrap" data-sku="${escapeHTML(sku)}">
           ${badgesHtml}
-          <img src="${escapeHTML(imageUrl)}" alt="${escapeHTML(name)}" loading="lazy" referrerPolicy="no-referrer" onerror="if(this.src!=='${fallbackImg}'){this.src='${fallbackImg}';}" />
+          <div class="carousel-viewport" data-sku="${escapeHTML(sku)}">
+            <div class="carousel-track">
+              ${slidesHtml}
+            </div>
+            ${dotsHtml}
+            ${arrowsHtml}
+          </div>
         </div>
         <div class="product-info">
           <span class="product-category-tag">${escapeHTML(category)}</span>
@@ -437,6 +753,15 @@ async function loadLiveProducts() {
       `;
 
       productGrid.appendChild(card);
+
+      // Initialize Carousel Instance for this Card
+      const viewportEl = card.querySelector('.carousel-viewport');
+      if (viewportEl) {
+        const carousel = new ProductCarousel(viewportEl, images, {
+          onImageClick: () => openQuickView(sku)
+        });
+        activeCarousels.push(carousel);
+      }
     });
 
     // Inject SEO Schema for Products
@@ -447,7 +772,7 @@ async function loadLiveProducts() {
 
   } catch (err) {
     console.error('Live Google Sheets Catalog Fetch Error:', err);
-    // Graceful fallback display
+    // Graceful fallback display with sample carousels
     const fallbackProducts = [
       {
         sku: 'PNJ-001',
@@ -460,7 +785,7 @@ async function loadLiveProducts() {
         discount: '10%',
         offerTag: 'Launch 10% Off',
         isOutOfStock: false,
-        img: 'earrings.jpg'
+        images: ['earrings.jpg', 'hero.jpg', 'story.jpg']
       },
       {
         sku: 'PNJ-002',
@@ -475,7 +800,7 @@ async function loadLiveProducts() {
         isOutOfStock: false,
         isUrgentStock: true,
         currentStockNum: 2,
-        img: 'pendants.jpg'
+        images: ['pendants.jpg', 'shell-pearl-pendant.jpg', 'hero.jpg']
       },
       {
         sku: 'PNJ-003',
@@ -488,7 +813,7 @@ async function loadLiveProducts() {
         discount: '',
         offerTag: '',
         isOutOfStock: true,
-        img: 'bracelets.jpg'
+        images: ['bracelets.jpg', 'story.jpg']
       }
     ];
 
@@ -496,7 +821,9 @@ async function loadLiveProducts() {
     loadedProductsMap.clear();
 
     fallbackProducts.forEach(product => {
+      product.img = product.images[0];
       loadedProductsMap.set(product.sku, product);
+
       const card = document.createElement('div');
       card.className = `product-card reveal visible ${product.isOutOfStock ? 'is-out-of-stock' : ''}`;
       card.setAttribute('data-category', product.categoryKey);
@@ -507,10 +834,33 @@ async function loadLiveProducts() {
       if (product.isOutOfStock) badgesHtml += `<span class="product-stock-badge out-of-stock">Out of Stock</span>`;
       else if (product.isUrgentStock) badgesHtml += `<span class="product-stock-badge urgent-stock">Only ${product.currentStockNum} left!</span>`;
 
+      const slidesHtml = product.images.map((imgUrl, i) => `
+        <div class="carousel-slide">
+          <img src="${imgUrl}" alt="${product.name} - Photo ${i + 1}" loading="lazy" referrerPolicy="no-referrer" />
+        </div>
+      `).join('');
+
+      const dotsHtml = product.images.length > 1 ? `
+        <div class="carousel-dots">
+          ${product.images.map((_, i) => `<button type="button" class="carousel-dot ${i === 0 ? 'active' : ''}" data-index="${i}"></button>`).join('')}
+        </div>
+      ` : '';
+
+      const arrowsHtml = product.images.length > 1 ? `
+        <button type="button" class="carousel-arrow carousel-arrow-prev">‹</button>
+        <button type="button" class="carousel-arrow carousel-arrow-next">›</button>
+      ` : '';
+
       card.innerHTML = `
-        <div class="product-img-wrap quick-view-trigger" data-sku="${product.sku}">
+        <div class="product-img-wrap" data-sku="${product.sku}">
           ${badgesHtml}
-          <img src="${product.img}" alt="${product.name}" loading="lazy" referrerPolicy="no-referrer" />
+          <div class="carousel-viewport" data-sku="${product.sku}">
+            <div class="carousel-track">
+              ${slidesHtml}
+            </div>
+            ${dotsHtml}
+            ${arrowsHtml}
+          </div>
         </div>
         <div class="product-info">
           <span class="product-category-tag">${product.category}</span>
@@ -527,6 +877,14 @@ async function loadLiveProducts() {
         </div>
       `;
       productGrid.appendChild(card);
+
+      const viewportEl = card.querySelector('.carousel-viewport');
+      if (viewportEl) {
+        const carousel = new ProductCarousel(viewportEl, product.images, {
+          onImageClick: () => openQuickView(product.sku)
+        });
+        activeCarousels.push(carousel);
+      }
     });
 
     applyCategoryFilter();
@@ -534,7 +892,7 @@ async function loadLiveProducts() {
 }
 
 // =============================================================
-// PRODUCT QUICK-VIEW MODAL LOGIC
+// PRODUCT QUICK-VIEW MODAL LOGIC (WITH IMAGE CAROUSEL)
 // =============================================================
 function openQuickView(sku) {
   const product = loadedProductsMap.get(sku);
@@ -543,8 +901,12 @@ function openQuickView(sku) {
   currentQuickViewProduct = product;
   currentQuickViewQty = 1;
 
-  const modal = document.getElementById('quickViewModal');
-  const imgEl = document.getElementById('quickViewImg');
+  const quickViewCarouselEl = document.getElementById('quickViewCarousel');
+  const quickViewTrackEl = document.getElementById('quickViewTrack');
+  const quickViewDotsEl = document.getElementById('quickViewDots');
+  const quickViewPrevBtn = document.getElementById('quickViewPrev');
+  const quickViewNextBtn = document.getElementById('quickViewNext');
+
   const offerBadge = document.getElementById('quickViewOfferBadge');
   const catEl = document.getElementById('quickViewCategory');
   const titleEl = document.getElementById('quickViewTitle');
@@ -556,10 +918,51 @@ function openQuickView(sku) {
   const qtyEl = document.getElementById('quickViewQty');
   const addBtn = document.getElementById('quickViewAddBtn');
 
-  if (imgEl) {
-    imgEl.src = product.img;
-    imgEl.alt = product.name;
-    imgEl.referrerPolicy = 'no-referrer';
+  // Destroy previous quick-view carousel if exists
+  if (quickViewCarouselInstance) {
+    quickViewCarouselInstance.destroy();
+    quickViewCarouselInstance = null;
+  }
+
+  // Setup Quick View Images & Carousel
+  const images = (product.images && product.images.length > 0) ? product.images : [product.img];
+
+  if (quickViewTrackEl) {
+    quickViewTrackEl.style.transform = 'translateX(0%)';
+    quickViewTrackEl.innerHTML = images.map((imgUrl, i) => `
+      <div class="carousel-slide">
+        <img src="${escapeHTML(imgUrl)}" alt="${escapeHTML(product.name)} - View ${i + 1}" referrerPolicy="no-referrer" onerror="if(this.src!=='${product.fallbackImg}'){this.src='${product.fallbackImg}';}" />
+      </div>
+    `).join('');
+  }
+
+  if (quickViewDotsEl) {
+    if (images.length > 1) {
+      quickViewDotsEl.style.display = 'inline-flex';
+      quickViewDotsEl.innerHTML = images.map((_, i) => `
+        <button type="button" class="carousel-dot ${i === 0 ? 'active' : ''}" data-index="${i}" aria-label="Jump to slide ${i + 1}"></button>
+      `).join('');
+    } else {
+      quickViewDotsEl.style.display = 'none';
+      quickViewDotsEl.innerHTML = '';
+    }
+  }
+
+  if (quickViewPrevBtn && quickViewNextBtn) {
+    if (images.length > 1) {
+      quickViewPrevBtn.style.display = 'flex';
+      quickViewNextBtn.style.display = 'flex';
+    } else {
+      quickViewPrevBtn.style.display = 'none';
+      quickViewNextBtn.style.display = 'none';
+    }
+  }
+
+  // Initialize Quick View Carousel
+  if (quickViewCarouselEl && images.length > 1) {
+    quickViewCarouselInstance = new ProductCarousel(quickViewCarouselEl, images, {
+      isQuickView: true
+    });
   }
 
   if (offerBadge) {
@@ -623,14 +1026,18 @@ function openQuickView(sku) {
 
 function closeQuickView() {
   document.body.classList.remove('quick-view-open');
+  if (quickViewCarouselInstance) {
+    quickViewCarouselInstance.destroy();
+    quickViewCarouselInstance = null;
+  }
   currentQuickViewProduct = null;
   currentQuickViewQty = 1;
 }
 
-// Delegated Click for Quick View Openers
+// Delegated Click for Quick View Openers (e.g. clicking title)
 document.addEventListener('click', (e) => {
   const trigger = e.target.closest('.quick-view-trigger');
-  if (trigger) {
+  if (trigger && !trigger.classList.contains('product-img-wrap')) {
     const sku = trigger.getAttribute('data-sku');
     if (sku) {
       openQuickView(sku);
@@ -675,7 +1082,7 @@ if (qvAddBtn) {
       id: currentQuickViewProduct.sku,
       title: currentQuickViewProduct.name,
       price: currentQuickViewProduct.finalPrice,
-      img: currentQuickViewProduct.img,
+      img: currentQuickViewProduct.images ? currentQuickViewProduct.images[0] : currentQuickViewProduct.img,
       category: currentQuickViewProduct.category,
       quantity: currentQuickViewQty
     });
@@ -744,7 +1151,7 @@ if (categoryTriggers.length > 0) {
   });
 }
 
-// Initialize live products
+// Initialize live products on DOM load
 if (document.getElementById('productGrid')) {
   loadLiveProducts();
 }
