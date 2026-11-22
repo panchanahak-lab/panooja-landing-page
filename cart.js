@@ -28,17 +28,21 @@ function addToCart(product) {
 document.addEventListener('DOMContentLoaded', () => {
   updateCartBadge();
 
-  const addBtns = document.querySelectorAll('.add-to-cart-btn');
-  addBtns.forEach(btn => {
-    btn.addEventListener('click', () => {
+  // Delegated event listener for all Add to Cart buttons (static and dynamically loaded)
+  document.addEventListener('click', (e) => {
+    const btn = e.target.closest('.add-to-cart-btn');
+    if (btn && !btn.disabled) {
+      e.preventDefault();
+      const rawPrice = btn.getAttribute('data-price') || '0';
+      const cleanPrice = parseInt(rawPrice.replace(/[^0-9]/g, ''), 10) || 0;
       const product = {
-        id: btn.getAttribute('data-id'),
-        title: btn.getAttribute('data-title'),
-        price: parseInt(btn.getAttribute('data-price')),
-        img: btn.getAttribute('data-img')
+        id: btn.getAttribute('data-id') || ('p_' + Date.now()),
+        title: btn.getAttribute('data-title') || 'PANOOJA Jewellery',
+        price: cleanPrice,
+        img: btn.getAttribute('data-img') || 'hero.jpg'
       };
       addToCart(product);
-    });
+    }
   });
 
   // If on cart page, render cart
