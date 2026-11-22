@@ -71,6 +71,21 @@ function openCheckoutModal() {
   closeCartDrawer();
   document.body.classList.add('checkout-modal-open');
   updateCheckoutPreview();
+
+  // Auto-fill client details if signed in via Gmail
+  try {
+    const user = (window.panoojaAuth && typeof window.panoojaAuth.getUser === 'function') ? window.panoojaAuth.getUser() : null;
+    if (user) {
+      const drawerName = document.getElementById('checkoutName');
+      const drawerPhone = document.getElementById('checkoutPhone');
+      const drawerAddress = document.getElementById('checkoutAddress');
+      const drawerPincode = document.getElementById('checkoutPincode');
+      if (drawerName && !drawerName.value) drawerName.value = user.name || '';
+      if (drawerPhone && !drawerPhone.value && user.phone) drawerPhone.value = user.phone;
+      if (drawerAddress && !drawerAddress.value && user.address) drawerAddress.value = user.address;
+      if (drawerPincode && !drawerPincode.value && user.pincode) drawerPincode.value = user.pincode;
+    }
+  } catch (e) {}
 }
 
 function closeCheckoutModal() {
@@ -322,13 +337,16 @@ function orderViaWhatsApp() {
     itemsListText += `${index + 1}. *${item.title}* x ${item.quantity} - ₹${(item.price * item.quantity).toLocaleString('en-IN')}\n`;
   });
 
+  const panoojaUser = (typeof window.panoojaAuth !== 'undefined') ? window.panoojaAuth.getUser() : null;
+  const emailLine = (panoojaUser && panoojaUser.email) ? `• Client Gmail: ${panoojaUser.email}\n` : '';
+
   const message = `✨ *NEW PANOOJA ORDER* ✨
 Order ID: #${orderId}
 
 👤 *Customer Details:*
 • Name: ${name}
 • WhatsApp Phone: ${phone}
-• Delivery Address: ${address}
+${emailLine}• Delivery Address: ${address}
 • Pincode: ${pincode}
 
 🛍️ *Items Ordered:*
@@ -425,6 +443,9 @@ async function payWithRazorpay(isPageCheckout = false) {
     }
   }
 
+  const panoojaUser = (typeof window.panoojaAuth !== 'undefined') ? window.panoojaAuth.getUser() : null;
+  const clientEmail = (panoojaUser && panoojaUser.email) ? panoojaUser.email : '';
+
   try {
     // Step 1: Call Backend to Create Order
     const orderRes = await fetch('/api/create-order', {
@@ -439,6 +460,7 @@ async function payWithRazorpay(isPageCheckout = false) {
         receipt: `rcpt_${Date.now()}`,
         customer_name: name,
         customer_phone: phone,
+        customer_email: clientEmail,
         delivery_address: `${address}, PIN: ${pincode}`
       })
     });
@@ -460,7 +482,8 @@ async function payWithRazorpay(isPageCheckout = false) {
       order_id: orderData.order_id,
       prefill: {
         name: name,
-        contact: phone
+        contact: phone,
+        email: clientEmail || ''
       },
       notes: {
         address: `${address}, PIN: ${pincode}`

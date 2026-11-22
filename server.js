@@ -8,6 +8,7 @@ import dotenv from 'dotenv';
 import createOrderHandler from './api/create-order.js';
 import verifyPaymentHandler from './api/verify-payment.js';
 import earlyAccessHandler from './api/early-access.js';
+import googleAuthHandler from './api/auth/google.js';
 
 dotenv.config();
 
@@ -85,6 +86,9 @@ const server = http.createServer((req, res) => {
   }
   if (pathname === '/api/early-access') {
     return adaptReqRes(req, res, earlyAccessHandler);
+  }
+  if (pathname === '/api/auth/google') {
+    return adaptReqRes(req, res, googleAuthHandler);
   }
 
   // Static File Serving

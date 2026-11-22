@@ -16,6 +16,8 @@
   <link rel="stylesheet" href="styles.css?v=7" />
   <!-- Razorpay Standard Checkout SDK -->
   <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+  <!-- Google Identity Services (Sign in with Google / Gmail) -->
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
 <body>
   <div class="announcement">
@@ -28,6 +30,11 @@
     </a>
 
     <div class="header-actions">
+      <button class="nav-account" id="navAccountBtn" type="button" aria-label="Client Account" title="Sign in with Gmail">
+        <span id="navAccountAvatar" style="display: none;"></span>
+        <svg id="navAccountIcon" class="account-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+        <span id="navAccountLabel">Sign In</span>
+      </button>
       <a href="cart.html" class="nav-cart" id="navCart" aria-label="View Shopping Cart">
         <svg class="cart-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path><line x1="3" y1="6" x2="21" y2="6"></line><path d="M16 10a4 4 0 0 1-8 0"></path></svg>
         <span>CART (<span id="cartCount">0</span>)</span>
@@ -59,6 +66,9 @@
       
       <div class="checkout-container reveal">
         <form id="pageCheckoutForm" class="waitlist-form" style="display: flex; flex-direction: column; gap: 16px;">
+          <!-- Client Login & Autofill Status -->
+          <div id="pageCheckoutClientStatus"></div>
+
           <h3 style="color: var(--black); margin-bottom: 8px; font-family: var(--font-serif); font-size: 1.6rem;">Shipping Details</h3>
           
           <div style="display: flex; flex-direction: column; gap: 6px;">
@@ -177,5 +187,21 @@
       }
     });
   </script>
+
+  <!-- =============================================================
+       CLIENT AUTH / GMAIL LOGIN MODAL & BACKDROP
+  ============================================================= -->
+  <div class="auth-modal-backdrop" id="authModalBackdrop"></div>
+  <div class="auth-modal" id="authModal" role="dialog" aria-modal="true" aria-labelledby="authModalTitle">
+    <div class="auth-modal-header">
+      <h3 id="authModalTitle">Client Portal</h3>
+      <button class="auth-modal-close" id="closeAuthModal" aria-label="Close client access">&times;</button>
+    </div>
+    <div class="auth-modal-body" id="authModalDynamicContent">
+      <!-- Injected dynamically by auth.js -->
+    </div>
+  </div>
+
+  <script src="auth.js?v=1"></script>
 </body>
 </html>
