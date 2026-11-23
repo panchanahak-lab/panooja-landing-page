@@ -11,6 +11,10 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
+# Customer Data and Persistent Storage
+data/
+*.tmp
+
 # OS Files
 .DS_Store
 Thumbs.db

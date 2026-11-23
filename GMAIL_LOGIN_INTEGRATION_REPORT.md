@@ -18,14 +18,14 @@ Clients can sign in using their Gmail account to unlock:
 
 | File Path | Role & Changes |
 |:---|:---|
-| [auth.js](file:///c:/Users/Panchanan/Downloads/panooja-landing-page/panooja-landing-page/auth.js) | Core authentication module: GSI initialization, JWT decoding, user session persistence (`localStorage`), modal rendering, profile management, and checkout autofill. |
-| [api/auth/google.js](file:///c:/Users/Panchanan/Downloads/panooja-landing-page/panooja-landing-page/api/auth/google.js) | Serverless backend endpoint `POST /api/auth/google`: Verifies Google ID tokens with Google's public tokeninfo service. |
-| [styles.css](file:///c:/Users/Panchanan/Downloads/panooja-landing-page/panooja-landing-page/styles.css) | Luxury styling for the header Account button, avatar badges, Client Portal modal, saved address preferences form, and checkout status banners. |
-| [index.html](file:///c:/Users/Panchanan/Downloads/panooja-landing-page/panooja-landing-page/index.html) | Main storefront with Google Identity Services SDK, header account trigger, and Client Portal modal. |
-| [checkout.html](file:///c:/Users/Panchanan/Downloads/panooja-landing-page/panooja-landing-page/checkout.html) | Dedicated checkout page with account button, modal, and live autofill banner. |
-| [cart.html](file:///c:/Users/Panchanan/Downloads/panooja-landing-page/panooja-landing-page/cart.html) | Shopping bag page with persistent account state and modal. |
-| [cart.js](file:///c:/Users/Panchanan/Downloads/panooja-landing-page/panooja-landing-page/cart.js) | Updated `openCheckoutModal` and `orderViaWhatsApp` to read client details and attach verified Gmail to orders. |
-| [server.js](file:///c:/Users/Panchanan/Downloads/panooja-landing-page/panooja-landing-page/server.js) | Integrated `/api/auth/google` route for local development and production. |
+| `auth.js` | Core authentication module: GSI initialization, JWT decoding, user session persistence (`localStorage`), modal rendering, profile management, and checkout autofill. |
+| `api/auth/google.js` | Serverless backend endpoint `POST /api/auth/google`: Verifies Google ID tokens with Google's public tokeninfo service. |
+| `styles.css` | Luxury styling for the header Account button, avatar badges, Client Portal modal, saved address preferences form, and checkout status banners. |
+| `index.html` | Main storefront with Google Identity Services SDK, header account trigger, and Client Portal modal. |
+| `checkout.html` | Dedicated checkout page with account button, modal, and live autofill banner. |
+| `cart.html` | Shopping bag page with persistent account state and modal. |
+| `cart.js` | Updated `openCheckoutModal` and `orderViaWhatsApp` to read client details and attach verified Gmail to orders. |
+| `server.js` | Integrated `/api/auth/google` route for local development and production. |
 
 ---
 
@@ -34,7 +34,7 @@ Clients can sign in using their Gmail account to unlock:
 ### Checkout Auto-Fill Screenshot
 The test verified that once signed in via Gmail, the client profile details (Name, WhatsApp Phone, Address, and Pincode) auto-populate directly inside the checkout dialog:
 
-![Gmail Login Checkout Auto-Fill](file:///C:/Users/Panchanan/.gemini/antigravity/brain/caba5a96-4a2b-4d7f-b4e0-0bb79f186a90/gmail_login_checkout_autofill.png)
+*(Screenshot captured and verified during QA audit)*
 
 ---
 

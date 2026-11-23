@@ -121,42 +121,42 @@
       return;
     }
 
-    const payload = parseJwt(response.credential);
-    if (!payload || !payload.email) {
-      alert('Unable to retrieve profile from Google. Please try again.');
-      return;
-    }
+    showAuthToast('Verifying with Google server...');
 
-    const user = {
-      id: payload.sub,
-      name: payload.name || payload.given_name || 'Valued Client',
-      givenName: payload.given_name || payload.name || 'Client',
-      email: payload.email,
-      picture: payload.picture || '',
-      verified: payload.email_verified || true,
-      authMethod: 'google_oauth',
-      signedInAt: new Date().toISOString(),
-      // Retain existing saved address info if present
-      phone: currentUser ? (currentUser.phone || '') : '',
-      address: currentUser ? (currentUser.address || '') : '',
-      pincode: currentUser ? (currentUser.pincode || '') : ''
-    };
-
-    saveUser(user);
-    closeAuthModal();
-    showAuthToast(`Welcome back, ${user.givenName}! You are signed in.`);
-
-    // Synchronize credential with backend verification endpoint
     try {
-      fetch('/api/auth/google', {
+      // Step 7: Await server-side token validation before authenticating
+      const verifyRes = await fetch('/api/auth/google', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ credential: response.credential })
-      }).catch(err => console.debug('Backend verification sync note:', err));
-    } catch (e) {}
+      });
+
+      const verifyData = await verifyRes.json();
+
+      if (!verifyRes.ok || !verifyData.ok || !verifyData.user) {
+        alert('Google verification failed: ' + (verifyData.error || 'Invalid Google account'));
+        return;
+      }
+
+      const verifiedUser = {
+        ...verifyData.user,
+        signedInAt: new Date().toISOString(),
+        phone: currentUser ? (currentUser.phone || '') : '',
+        address: currentUser ? (currentUser.address || '') : '',
+        pincode: currentUser ? (currentUser.pincode || '') : ''
+      };
+
+      saveUser(verifiedUser);
+      closeAuthModal();
+      showAuthToast(`Welcome back, ${verifiedUser.givenName}! Verified with Google.`);
+
+    } catch (err) {
+      console.error('Server Google auth error:', err);
+      alert('Could not verify Google credentials with the server. Please check your internet connection.');
+    }
   }
 
-  // Direct Gmail Login (works immediately for all clients / demo / production)
+  // Direct Email / Guest Profile for local device convenience
   function handleDirectGmailLogin(email, name = '') {
     email = (email || '').trim().toLowerCase();
     if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
@@ -165,28 +165,27 @@
     }
 
     const extractedName = name.trim() || email.split('@')[0].replace(/[._-]/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-    
-    // Auto-derive high quality initials avatar if no photo
     const initials = extractedName.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase();
 
-    const user = {
-      id: 'usr_' + Date.now(),
+    // Stored as unverified guest profile for local device convenience only
+    const guestUser = {
+      id: 'guest_' + Date.now(),
       name: extractedName,
       givenName: extractedName.split(' ')[0],
       email: email,
       initials: initials,
       picture: '',
-      verified: true,
-      authMethod: 'gmail_direct',
+      verified: false, // NOT a verified Google account
+      authMethod: 'guest_device_profile',
       signedInAt: new Date().toISOString(),
       phone: currentUser ? (currentUser.phone || '') : '',
       address: currentUser ? (currentUser.address || '') : '',
       pincode: currentUser ? (currentUser.pincode || '') : ''
     };
 
-    saveUser(user);
+    saveUser(guestUser);
     closeAuthModal();
-    showAuthToast(`Signed in as ${user.name} (${user.email})`);
+    showAuthToast(`Saved guest details for ${guestUser.name} on this device`);
     return true;
   }
 
@@ -278,8 +277,8 @@
                 ${currentUser.email}
               </p>
               <div class="profile-badge">
-                <span class="badge-dot"></span>
-                <span>PANOOJA VIP CLIENT · WELCOME10 ACTIVE</span>
+                <span class="badge-dot" style="${currentUser.verified ? 'background: #10B981;' : 'background: #6B7280;'}"></span>
+                <span>${currentUser.verified ? 'VERIFIED GOOGLE ACCOUNT · VIP PERKS ACTIVE' : 'GUEST PROFILE (SAVED ON THIS DEVICE)'}</span>
               </div>
             </div>
           </div>
@@ -464,11 +463,12 @@
       if (drawerPincode && !drawerPincode.value && currentUser.pincode) drawerPincode.value = currentUser.pincode;
 
       if (clientStatusEl) {
+        const isVerified = currentUser.verified;
         clientStatusEl.innerHTML = `
           <div class="checkout-client-pill">
-            <span class="dot-online"></span>
-            <span>Signed in as <strong>${currentUser.name}</strong> (${currentUser.email})</span>
-            <button type="button" class="btn-text-link" id="checkoutSignOutLink">Sign Out</button>
+            <span class="dot-online" style="${isVerified ? 'background: #10B981;' : 'background: #6B7280;'}"></span>
+            <span>${isVerified ? '✓ Verified Google Account:' : 'Saved Guest Details:'} <strong>${currentUser.name}</strong> (${currentUser.email})</span>
+            <button type="button" class="btn-text-link" id="checkoutSignOutLink">Change</button>
           </div>
         `;
         const link = document.getElementById('checkoutSignOutLink');
@@ -501,11 +501,12 @@
       if (pagePincode && !pagePincode.value && currentUser.pincode) pagePincode.value = currentUser.pincode;
 
       if (pageClientStatus) {
+        const isVerified = currentUser.verified;
         pageClientStatus.innerHTML = `
           <div class="checkout-client-pill">
-            <span class="dot-online"></span>
-            <span>Signed in as <strong>${currentUser.name}</strong> (${currentUser.email})</span>
-            <button type="button" class="btn-text-link" id="pageCheckoutSignOutLink">Sign Out</button>
+            <span class="dot-online" style="${isVerified ? 'background: #10B981;' : 'background: #6B7280;'}"></span>
+            <span>${isVerified ? '✓ Verified Google Account:' : 'Saved Guest Details:'} <strong>${currentUser.name}</strong> (${currentUser.email})</span>
+            <button type="button" class="btn-text-link" id="pageCheckoutSignOutLink">Change</button>
           </div>
         `;
         const link = document.getElementById('pageCheckoutSignOutLink');

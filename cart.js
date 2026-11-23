@@ -309,19 +309,29 @@ function orderViaWhatsApp() {
     if (nameInput) nameInput.focus();
     return;
   }
-  if (!phone || phone.length < 10) {
-    alert('Please enter a valid 10-digit WhatsApp phone number.');
+
+  const cleanPhone = phone.replace(/[^0-9]/g, '');
+  if (!/^[6-9]\d{9}$/.test(cleanPhone)) {
+    alert('Please enter a valid 10-digit Indian WhatsApp mobile number (starting with 6, 7, 8, or 9).');
     if (phoneInput) phoneInput.focus();
     return;
   }
+
   if (!address) {
     alert('Please enter your complete delivery address.');
     if (addressInput) addressInput.focus();
     return;
   }
-  if (!pincode || pincode.length < 6) {
-    alert('Please enter a valid 6-digit delivery pincode.');
+
+  const cleanPincode = pincode.replace(/[^0-9]/g, '');
+  if (!/^[1-9]\d{5}$/.test(cleanPincode)) {
+    alert('Please enter a valid 6-digit Indian delivery PIN code.');
     if (pincodeInput) pincodeInput.focus();
+    return;
+  }
+
+  if (cart.length === 0) {
+    alert('Your shopping bag is empty.');
     return;
   }
 
@@ -330,44 +340,65 @@ function orderViaWhatsApp() {
   const isFreeShipping = subtotal >= FREE_SHIPPING_THRESHOLD || discountInfo.isFreeShip;
   const shippingFee = (subtotal === 0 || isFreeShipping) ? 0 : STANDARD_SHIPPING_FEE;
   const grandTotal = Math.max(0, subtotal - discountInfo.amount + shippingFee);
-  const orderId = 'PNJ-' + Math.floor(100000 + Math.random() * 900000);
+  const inquiryRef = 'INQ-' + Date.now().toString(36).toUpperCase() + '-' + Math.floor(100 + Math.random() * 900);
 
   let itemsListText = '';
   cart.forEach((item, index) => {
-    itemsListText += `${index + 1}. *${item.title}* x ${item.quantity} - ₹${(item.price * item.quantity).toLocaleString('en-IN')}\n`;
+    itemsListText += `${index + 1}. *${item.title}* (SKU: ${item.sku || item.id || 'N/A'}) x ${item.quantity} - ₹${(item.price * item.quantity).toLocaleString('en-IN')}\n`;
   });
 
   const panoojaUser = (typeof window.panoojaAuth !== 'undefined') ? window.panoojaAuth.getUser() : null;
-  const emailLine = (panoojaUser && panoojaUser.email) ? `• Client Gmail: ${panoojaUser.email}\n` : '';
+  const emailLine = (panoojaUser && panoojaUser.email) ? `• Client Email: ${panoojaUser.email}\n` : '';
 
-  const message = `✨ *NEW PANOOJA ORDER* ✨
-Order ID: #${orderId}
+  const message = `✨ *PANOOJA ORDER INQUIRY* ✨
+Reference: #${inquiryRef}
 
 👤 *Customer Details:*
 • Name: ${name}
-• WhatsApp Phone: ${phone}
+• WhatsApp Phone: +91 ${cleanPhone}
 ${emailLine}• Delivery Address: ${address}
-• Pincode: ${pincode}
+• PIN Code: ${cleanPincode}
 
-🛍️ *Items Ordered:*
+🛍️ *Items in Bag:*
 ${itemsListText}
-💰 *Price Breakdown:*
+💰 *Estimated Payable:*
 • Subtotal: ₹${subtotal.toLocaleString('en-IN')}
-${discountInfo.amount > 0 ? `• Discount (${discountInfo.code}): -₹${discountInfo.amount.toLocaleString('en-IN')}\n` : ''}• Express Shipping: ${shippingFee === 0 ? 'FREE' : '₹' + shippingFee}
-• *Total Payable: ₹${grandTotal.toLocaleString('en-IN')}*
+${discountInfo.amount > 0 ? `• Discount (${discountInfo.code}): -₹${discountInfo.amount.toLocaleString('en-IN')}\n` : ''}• Pan-India Express Delivery: ${shippingFee === 0 ? 'FREE' : '₹' + shippingFee}
+• *Total Amount: ₹${grandTotal.toLocaleString('en-IN')}*
 
-Please confirm my order and share payment instructions / UPI QR code!`;
+Please confirm availability and share payment / UPI QR details!`;
 
   const waUrl = `https://wa.me/${PANOOJA_WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`;
-  
-  // Clear cart & close modal
-  cart = [];
-  appliedCoupon = null;
-  saveCart();
-  closeCheckoutModal();
 
-  // Open WhatsApp in new tab
-  window.open(waUrl, '_blank');
+  // Record inquiry on server (non-blocking)
+  try {
+    fetch('/api/create-order', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        receipt: inquiryRef,
+        items: cart.map(item => ({ sku: item.sku || item.id, quantity: item.quantity })),
+        promo_code: appliedCoupon ? appliedCoupon.code : '',
+        customer_name: name,
+        customer_phone: cleanPhone,
+        customer_email: (panoojaUser && panoojaUser.email) ? panoojaUser.email : '',
+        delivery_address: `${address}, PIN: ${cleanPincode}`
+      })
+    }).catch(e => console.debug('Inquiry record note:', e));
+  } catch (e) {}
+
+  // Open WhatsApp in new tab safely
+  const waWindow = window.open(waUrl, '_blank');
+  if (!waWindow || waWindow.closed || typeof waWindow.closed === 'undefined') {
+    // Popup was blocked by browser
+    alert('Popup was blocked by your browser. We will open WhatsApp directly.');
+    window.location.href = waUrl;
+    return;
+  }
+
+  // Preserve cart until customer confirms order with stylist
+  closeCheckoutModal();
+  alert(`Your order summary has been transferred to WhatsApp!\n\nReference: #${inquiryRef}\nYour shopping bag remains saved on this device.`);
 }
 
 // =============================================================
@@ -390,8 +421,9 @@ async function payWithRazorpay(isPageCheckout = false) {
     if (nameEl) nameEl.focus();
     return;
   }
-  if (!phone || phone.length < 10) {
-    alert('Please enter a valid 10-digit phone number.');
+  const cleanPhone = phone.replace(/[^0-9]/g, '');
+  if (!cleanPhone || !/^[6-9]\d{9}$/.test(cleanPhone)) {
+    alert('Please enter a valid 10-digit Indian mobile number (starting with 6, 7, 8, or 9).');
     if (phoneEl) phoneEl.focus();
     return;
   }
@@ -400,8 +432,9 @@ async function payWithRazorpay(isPageCheckout = false) {
     if (addressEl) addressEl.focus();
     return;
   }
-  if (!pincode || pincode.length < 6) {
-    alert('Please enter a valid 6-digit delivery pincode.');
+  const cleanPincode = pincode.replace(/[^0-9]/g, '');
+  if (!cleanPincode || !/^[1-9]\d{5}$/.test(cleanPincode)) {
+    alert('Please enter a valid 6-digit Indian delivery PIN code.');
     if (pincodeEl) pincodeEl.focus();
     return;
   }
@@ -447,21 +480,24 @@ async function payWithRazorpay(isPageCheckout = false) {
   const clientEmail = (panoojaUser && panoojaUser.email) ? panoojaUser.email : '';
 
   try {
-    // Step 1: Call Backend to Create Order
+    // Step 1: Call Backend to Create Order (Server-Side Price Calculation)
     const orderRes = await fetch('/api/create-order', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        amount: Math.round(grandTotal * 100), // Razorpay requires amount in paise
-        amount_in_rupees: grandTotal,
+        items: cart.map(item => ({
+          sku: item.sku || item.id,
+          quantity: item.quantity
+        })),
+        promo_code: appliedCoupon ? appliedCoupon.code : '',
         currency: 'INR',
         receipt: `rcpt_${Date.now()}`,
         customer_name: name,
-        customer_phone: phone,
+        customer_phone: cleanPhone,
         customer_email: clientEmail,
-        delivery_address: `${address}, PIN: ${pincode}`
+        delivery_address: `${address}, PIN: ${cleanPincode}`
       })
     });
 

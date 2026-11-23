@@ -1,6 +1,8 @@
-// api/create-order.js - Razorpay Order Creation Endpoint
+// api/create-order.js - Razorpay Order Creation Endpoint with Server-Side Price Calculation
 import Razorpay from 'razorpay';
 import dotenv from 'dotenv';
+import { calculateOrderTotal } from './catalog-service.js';
+import { saveOrder } from './order-store.js';
 
 dotenv.config();
 
@@ -42,12 +44,27 @@ export default async function handler(req, res) {
     body = body || {};
 
     let amountInPaise;
-    if (typeof body.amount_in_rupees !== 'undefined') {
+    let calculation = null;
+
+    // Secure Server-Side Calculation: Browser cannot dictate price if items are passed
+    if (Array.isArray(body.items) && body.items.length > 0) {
+      calculation = await calculateOrderTotal(body.items, body.promo_code);
+      if (!calculation.ok) {
+        return res.status(400).json({
+          ok: false,
+          error: calculation.error || 'Failed to calculate order total from trusted catalogue.'
+        });
+      }
+      amountInPaise = calculation.amountInPaise;
+    } else if (typeof body.amount_in_rupees !== 'undefined') {
       amountInPaise = Math.round(Number(body.amount_in_rupees) * 100);
     } else if (typeof body.amount !== 'undefined') {
       amountInPaise = Math.round(Number(body.amount));
     } else {
-      amountInPaise = 0;
+      return res.status(400).json({
+        ok: false,
+        error: 'Shopping bag items are required to create an order.'
+      });
     }
 
     // Minimum order amount requirement: 100 paise (₹1)
@@ -58,7 +75,7 @@ export default async function handler(req, res) {
       });
     }
 
-    const currency = (body.currency || 'INR').toUpperCase();
+    const currency = 'INR';
     const receipt = body.receipt || `rcpt_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
 
     const razorpay = new Razorpay({
@@ -66,26 +83,57 @@ export default async function handler(req, res) {
       key_secret
     });
 
+    const customerName = (body.customer_name || '').trim();
+    const customerPhone = (body.customer_phone || '').trim();
+    const customerEmail = (body.customer_email || '').trim();
+    const deliveryAddress = (body.delivery_address || '').trim();
+
     const options = {
       amount: amountInPaise,
       currency,
       receipt,
       notes: {
-        customer_name: body.customer_name || '',
-        customer_phone: body.customer_phone || '',
-        customer_email: body.customer_email || '',
-        delivery_address: body.delivery_address || ''
+        customer_name: customerName,
+        customer_phone: customerPhone,
+        customer_email: customerEmail,
+        delivery_address: deliveryAddress,
+        promo_code: calculation ? calculation.promoCode : (body.promo_code || '')
       }
     };
 
     const order = await razorpay.orders.create(options);
+
+    // Save order record persistently
+    saveOrder({
+      order_id: order.id,
+      receipt,
+      amount: order.amount,
+      currency: order.currency,
+      status: 'Payment Initiated',
+      customer: {
+        name: customerName,
+        phone: customerPhone,
+        email: customerEmail,
+        address: deliveryAddress
+      },
+      items: calculation ? calculation.items : [],
+      subtotal: calculation ? calculation.subtotal : Math.round(order.amount / 100),
+      discount: calculation ? calculation.discount : 0,
+      promo_code: calculation ? calculation.promoCode : (body.promo_code || '')
+    });
 
     return res.status(200).json({
       ok: true,
       order_id: order.id,
       amount: order.amount,
       currency: order.currency,
-      key_id: key_id
+      key_id: key_id,
+      calculation: calculation ? {
+        subtotal: calculation.subtotal,
+        discount: calculation.discount,
+        shippingFee: calculation.shippingFee,
+        grandTotal: calculation.grandTotal
+      } : null
     });
 
   } catch (error) {

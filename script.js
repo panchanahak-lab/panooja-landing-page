@@ -40,7 +40,7 @@ const observer = new IntersectionObserver((entries) => {
       observer.unobserve(entry.target);
     }
   });
-}, { threshold: 0.1 });
+}, { threshold: 0.05, rootMargin: '0px 0px 50px 0px' });
 
 document.querySelectorAll('.reveal').forEach((element) => observer.observe(element));
 
@@ -90,28 +90,52 @@ if (newsletterForm) {
     };
 
     try {
-      await fetch('/api/early-access', {
+      const res = await fetch('/api/early-access', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       });
-    } catch (e) {
-      // Local or static fallback
-    }
 
-    // Reveal the 10% Off Coupon Code Card
-    if (couponRevealCard) {
-      couponRevealCard.style.display = 'block';
-      newsletterForm.style.display = 'none';
-    }
+      const data = await res.json().catch(() => ({}));
 
-    // Auto-apply WELCOME10 coupon to cart
-    if (typeof applyPromoCode === 'function') {
-      applyPromoCode('WELCOME10');
-    }
+      // Phase 5 Requirement: Only reveal coupon on server-confirmed success
+      if (res.ok && (data.ok === true || data.status === 'created' || data.status === 'duplicate')) {
+        if (couponRevealCard) {
+          couponRevealCard.style.display = 'block';
+          newsletterForm.style.display = 'none';
+        }
 
-    if (formMessage) {
-      formMessage.textContent = 'Welcome to PANOOJA! Code WELCOME10 unlocked below.';
+        if (typeof applyPromoCode === 'function') {
+          applyPromoCode('WELCOME10');
+        }
+
+        if (formMessage) {
+          formMessage.style.color = '#10B981';
+          formMessage.textContent = data.status === 'duplicate'
+            ? 'Welcome back! Your code WELCOME10 is unlocked below.'
+            : 'Welcome to PANOOJA! Code WELCOME10 unlocked below.';
+        }
+      } else {
+        // Registration failed: DO NOT reveal coupon
+        if (formMessage) {
+          formMessage.style.color = '#EF4444';
+          formMessage.textContent = data.message || 'Unable to register email at this moment. Please try again.';
+        }
+        if (submitButton) {
+          submitButton.disabled = false;
+          submitButton.textContent = 'Get 10% Off';
+        }
+      }
+    } catch (err) {
+      console.error('Newsletter submission error:', err);
+      if (formMessage) {
+        formMessage.style.color = '#EF4444';
+        formMessage.textContent = 'Network connection error. Please check your connection and try again.';
+      }
+      if (submitButton) {
+        submitButton.disabled = false;
+        submitButton.textContent = 'Get 10% Off';
+      }
     }
   });
 }
@@ -408,6 +432,11 @@ function extractProductImages(item, categoryKey) {
     let url = String(raw).trim();
     if (!url || url.toLowerCase() === 'none' || url.toLowerCase() === 'null') return;
 
+    // Filter out Google Drive folder URLs which cannot render as image files
+    if (url.includes('/drive/folders/') || url.includes('/folders/')) {
+      return;
+    }
+
     // Convert standard Google Drive file URL to direct lh3 link
     const driveMatch = url.match(/\/file\/d\/([a-zA-Z0-9_-]+)/) || url.match(/[?&]id=([a-zA-Z0-9_-]+)/);
     if (driveMatch && driveMatch[1] && !url.includes('lh3.googleusercontent.com')) {
@@ -430,16 +459,9 @@ function extractProductImages(item, categoryKey) {
     return collected;
   }
 
-  // Multi-image sample fallback gallery per category for testing and rich preview
-  const multiSamples = {
-    earrings: ['earrings.jpg', 'hero.jpg', 'story.jpg'],
-    rings: ['rings.jpg', 'story.jpg', 'hero.jpg'],
-    pendants: ['pendants.jpg', 'shell-pearl-pendant.jpg', 'hero.jpg'],
-    bracelets: ['bracelets.jpg', 'story.jpg', 'hero.jpg'],
-    default: ['hero.jpg', 'earrings.jpg', 'rings.jpg']
-  };
-
-  return multiSamples[categoryKey] || multiSamples.default;
+  // When no image is provided, use single genuine category fallback image
+  const fallback = CATEGORY_FALLBACKS[categoryKey] || CATEGORY_FALLBACKS.default;
+  return [fallback];
 }
 
 // CSV Parser handling quotes, commas, and line breaks
@@ -772,122 +794,18 @@ async function loadLiveProducts() {
 
   } catch (err) {
     console.error('Live Google Sheets Catalog Fetch Error:', err);
-    // Graceful fallback display with sample carousels
-    const fallbackProducts = [
-      {
-        sku: 'PNJ-001',
-        name: 'Gold Plated Anti-Tarnish Hoop Earrings',
-        category: 'Earrings',
-        categoryKey: 'earrings',
-        desc: '18K gold-plated stainless steel, waterproof and sweat-resistant daily wear hoops.',
-        finalPrice: 899,
-        mrp: 999,
-        discount: '10%',
-        offerTag: 'Launch 10% Off',
-        isOutOfStock: false,
-        images: ['earrings.jpg', 'hero.jpg', 'story.jpg']
-      },
-      {
-        sku: 'PNJ-002',
-        name: 'Waterproof Snake Chain Necklace',
-        category: 'Pendants & Chains',
-        categoryKey: 'pendants',
-        desc: 'Hypoallergenic 316L stainless steel anti-tarnish snake chain, 16-inch + 2-inch extender.',
-        finalPrice: 1274,
-        mrp: 1499,
-        discount: '15%',
-        offerTag: 'Festive 15% Off',
-        isOutOfStock: false,
-        isUrgentStock: true,
-        currentStockNum: 2,
-        images: ['pendants.jpg', 'shell-pearl-pendant.jpg', 'hero.jpg']
-      },
-      {
-        sku: 'PNJ-003',
-        name: 'Minimalist Anti-Tarnish Kada Bracelet',
-        category: 'Kadas & Bracelets',
-        categoryKey: 'bracelets',
-        desc: 'Tarnish-free gold-tone oval bangle with hidden clasp, water-safe finish.',
-        finalPrice: 1299,
-        mrp: 1299,
-        discount: '',
-        offerTag: '',
-        isOutOfStock: true,
-        images: ['bracelets.jpg', 'story.jpg']
-      }
-    ];
-
-    productGrid.innerHTML = '';
     loadedProductsMap.clear();
 
-    fallbackProducts.forEach(product => {
-      product.img = product.images[0];
-      loadedProductsMap.set(product.sku, product);
+    if (emptyMsg) emptyMsg.style.display = 'none';
 
-      const card = document.createElement('div');
-      card.className = `product-card reveal visible ${product.isOutOfStock ? 'is-out-of-stock' : ''}`;
-      card.setAttribute('data-category', product.categoryKey);
-      card.setAttribute('data-sku', product.sku);
-
-      let badgesHtml = '';
-      if (product.offerTag) badgesHtml += `<span class="product-offer-badge">${escapeHTML(product.offerTag)}</span>`;
-      if (product.isOutOfStock) badgesHtml += `<span class="product-stock-badge out-of-stock">Out of Stock</span>`;
-      else if (product.isUrgentStock) badgesHtml += `<span class="product-stock-badge urgent-stock">Only ${product.currentStockNum} left!</span>`;
-
-      const slidesHtml = product.images.map((imgUrl, i) => `
-        <div class="carousel-slide">
-          <img src="${imgUrl}" alt="${product.name} - Photo ${i + 1}" loading="lazy" referrerPolicy="no-referrer" />
-        </div>
-      `).join('');
-
-      const dotsHtml = product.images.length > 1 ? `
-        <div class="carousel-dots">
-          ${product.images.map((_, i) => `<button type="button" class="carousel-dot ${i === 0 ? 'active' : ''}" data-index="${i}"></button>`).join('')}
-        </div>
-      ` : '';
-
-      const arrowsHtml = product.images.length > 1 ? `
-        <button type="button" class="carousel-arrow carousel-arrow-prev">‹</button>
-        <button type="button" class="carousel-arrow carousel-arrow-next">›</button>
-      ` : '';
-
-      card.innerHTML = `
-        <div class="product-img-wrap" data-sku="${product.sku}">
-          ${badgesHtml}
-          <div class="carousel-viewport" data-sku="${product.sku}">
-            <div class="carousel-track">
-              ${slidesHtml}
-            </div>
-            ${dotsHtml}
-            ${arrowsHtml}
-          </div>
-        </div>
-        <div class="product-info">
-          <span class="product-category-tag">${product.category}</span>
-          <h3 class="quick-view-trigger" data-sku="${product.sku}" style="cursor: pointer;">${product.name}</h3>
-          <p class="product-description">${product.desc}</p>
-          <div class="product-price-row">
-            <span class="product-final-price">₹${product.finalPrice.toLocaleString('en-IN')}</span>
-            ${product.mrp > product.finalPrice ? `<span class="product-mrp">₹${product.mrp.toLocaleString('en-IN')}</span>` : ''}
-            ${product.discount ? `<span class="product-discount-label">${product.discount} off</span>` : ''}
-          </div>
-          ${product.isOutOfStock 
-            ? `<button class="button button-disabled add-to-cart-btn" disabled="disabled">Out of Stock</button>` 
-            : `<button class="button button-primary add-to-cart-btn" data-id="${product.sku}" data-title="${product.name}" data-price="${product.finalPrice}" data-img="${product.img}">Add to Cart</button>`}
-        </div>
-      `;
-      productGrid.appendChild(card);
-
-      const viewportEl = card.querySelector('.carousel-viewport');
-      if (viewportEl) {
-        const carousel = new ProductCarousel(viewportEl, product.images, {
-          onImageClick: () => openQuickView(product.sku)
-        });
-        activeCarousels.push(carousel);
-      }
-    });
-
-    applyCategoryFilter();
+    productGrid.innerHTML = `
+      <div class="catalog-error-state" style="grid-column: 1 / -1; text-align: center; padding: 60px 24px; max-width: 540px; margin: 0 auto;">
+        <div style="font-size: 2rem; margin-bottom: 12px; color: var(--color-royal-blue, #1B69E8);" aria-hidden="true">✦</div>
+        <h3 style="font-family: var(--font-heading, 'Cormorant Garamond', serif); font-size: 1.6rem; font-weight: 500; margin-bottom: 10px; color: var(--color-black, #050505);">Collection Temporarily Unavailable</h3>
+        <p style="color: var(--color-charcoal, #242424); font-size: 0.95rem; line-height: 1.6; margin-bottom: 24px;">We are unable to load our live product catalogue at this moment. Please check your connection and try refreshing.</p>
+        <button type="button" class="button button-secondary" onclick="loadLiveProducts()" style="min-width: 180px;">↻ Retry Loading Collection</button>
+      </div>
+    `;
   }
 }
 
