@@ -5,8 +5,7 @@
   'use strict';
 
   // Configurable Google Client ID (from environment or global config)
-  // To use your own Google Cloud OAuth Client ID, set window.PANOOJA_GOOGLE_CLIENT_ID or replace below:
-  const DEFAULT_GOOGLE_CLIENT_ID = window.PANOOJA_GOOGLE_CLIENT_ID || '1047648293746-panooja-client-auth.apps.googleusercontent.com';
+  const DEFAULT_GOOGLE_CLIENT_ID = window.PANOOJA_GOOGLE_CLIENT_ID || '63300831514-5qg0db4qmdnfa5g4vkfqh339e3asriv2.apps.googleusercontent.com';
   const STORAGE_KEY = 'panooja_client_user';
 
   // State
@@ -79,6 +78,15 @@
 
       // Render button if container exists
       renderGsiButton();
+
+      // Prompt One Tap if guest
+      if (!currentUser) {
+        window.google.accounts.id.prompt((notification) => {
+          if (notification.isNotDisplayed && notification.isNotDisplayed()) {
+            console.debug('Google One Tap note:', notification.getNotDisplayedReason());
+          }
+        });
+      }
     } catch (err) {
       console.log('Google Identity Services note:', err.message);
     }
@@ -137,6 +145,15 @@
     saveUser(user);
     closeAuthModal();
     showAuthToast(`Welcome back, ${user.givenName}! You are signed in.`);
+
+    // Synchronize credential with backend verification endpoint
+    try {
+      fetch('/api/auth/google', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ credential: response.credential })
+      }).catch(err => console.debug('Backend verification sync note:', err));
+    } catch (e) {}
   }
 
   // Direct Gmail Login (works immediately for all clients / demo / production)

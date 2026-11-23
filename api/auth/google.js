@@ -51,6 +51,14 @@ export default async function handler(req, res) {
       });
 
       if (tokenInfo.statusCode === 200 && tokenInfo.data.email) {
+        const expectedClientId = process.env.GOOGLE_CLIENT_ID;
+        if (expectedClientId && tokenInfo.data.aud !== expectedClientId) {
+          return res.status(400).json({
+            ok: false,
+            error: 'Google credential audience mismatch.'
+          });
+        }
+
         return res.status(200).json({
           ok: true,
           user: {
