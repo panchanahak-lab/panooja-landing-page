@@ -31,14 +31,33 @@ const MIME_TYPES = {
   '.xml': 'application/xml'
 };
 
+const MAX_BODY_SIZE = 1 * 1024 * 1024; // 1MB payload limit
+
 // Helper to adapt Node http request & response to Vercel/Express-like handler
 function adaptReqRes(req, res, handler) {
+  // Set standard security headers on all responses
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'SAMEORIGIN');
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+
   let bodyData = '';
+  let bodyLength = 0;
+
   req.on('data', chunk => {
+    bodyLength += chunk.length;
+    if (bodyLength > MAX_BODY_SIZE) {
+      res.statusCode = 413;
+      res.setHeader('Content-Type', 'application/json');
+      res.end(JSON.stringify({ ok: false, error: 'Payload Too Large' }));
+      req.destroy();
+      return;
+    }
     bodyData += chunk;
   });
 
   req.on('end', async () => {
+    if (bodyLength > MAX_BODY_SIZE) return;
+
     if (bodyData) {
       try {
         req.body = JSON.parse(bodyData);
@@ -75,6 +94,11 @@ function adaptReqRes(req, res, handler) {
 }
 
 const server = http.createServer((req, res) => {
+  // Global security headers
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'SAMEORIGIN');
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+
   const [pathname] = req.url.split('?');
 
   // API Routes
@@ -91,11 +115,35 @@ const server = http.createServer((req, res) => {
     return adaptReqRes(req, res, googleAuthHandler);
   }
 
+  // Security Check: Block sensitive files (.env, .git, data, node_modules)
+  const normalizedPath = path.normalize(pathname).replace(/^(\.\.[\/\\])+/, '');
+  if (
+    normalizedPath.includes('..') ||
+    /(^|[\\/])\./.test(normalizedPath) ||
+    normalizedPath.toLowerCase().includes('.env') ||
+    normalizedPath.startsWith('/data') ||
+    normalizedPath.startsWith('\\data') ||
+    normalizedPath.startsWith('/node_modules') ||
+    normalizedPath.startsWith('\\node_modules')
+  ) {
+    res.writeHead(403, { 'Content-Type': 'text/plain' });
+    res.end('403 Forbidden: Access Denied');
+    return;
+  }
+
   // Static File Serving
   let reqPath = pathname;
   if (reqPath === '/' || reqPath === '') reqPath = '/index.html';
 
-  const filePath = path.join(__dirname, reqPath);
+  const filePath = path.resolve(__dirname, '.' + reqPath);
+
+  // Path Traversal containment check
+  if (!filePath.startsWith(__dirname)) {
+    res.writeHead(403, { 'Content-Type': 'text/plain' });
+    res.end('403 Forbidden');
+    return;
+  }
+
   const ext = path.extname(filePath).toLowerCase();
   const contentType = MIME_TYPES[ext] || 'application/octet-stream';
 

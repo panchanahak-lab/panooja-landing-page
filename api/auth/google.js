@@ -51,11 +51,40 @@ export default async function handler(req, res) {
       });
 
       if (tokenInfo.statusCode === 200 && tokenInfo.data.email) {
-        const expectedClientId = process.env.GOOGLE_CLIENT_ID;
+        const expectedClientId = process.env.GOOGLE_CLIENT_ID || '63300831514-5qg0db4qmdnfa5g4vkfqh339e3asriv2.apps.googleusercontent.com';
+        
+        // 1. Audience validation
         if (expectedClientId && tokenInfo.data.aud !== expectedClientId) {
           return res.status(400).json({
             ok: false,
             error: 'Google credential audience mismatch.'
+          });
+        }
+
+        // 2. Issuer validation
+        const iss = tokenInfo.data.iss;
+        if (iss !== 'https://accounts.google.com' && iss !== 'accounts.google.com') {
+          return res.status(400).json({
+            ok: false,
+            error: 'Invalid token issuer.'
+          });
+        }
+
+        // 3. Expiration validation
+        const exp = parseInt(tokenInfo.data.exp, 10);
+        if (!exp || (exp * 1000) < (Date.now() - 300000)) { // 5-minute clock drift tolerance
+          return res.status(400).json({
+            ok: false,
+            error: 'Google authentication token has expired.'
+          });
+        }
+
+        // 4. Email verified validation
+        const isEmailVerified = tokenInfo.data.email_verified === 'true' || tokenInfo.data.email_verified === true;
+        if (!isEmailVerified) {
+          return res.status(400).json({
+            ok: false,
+            error: 'Google account email is not verified.'
           });
         }
 
@@ -64,9 +93,10 @@ export default async function handler(req, res) {
           user: {
             id: tokenInfo.data.sub,
             name: tokenInfo.data.name || name || 'Client',
+            givenName: tokenInfo.data.given_name || (tokenInfo.data.name ? tokenInfo.data.name.split(' ')[0] : 'Client'),
             email: tokenInfo.data.email,
             picture: tokenInfo.data.picture || '',
-            verified: tokenInfo.data.email_verified === 'true' || true,
+            verified: true,
             authMethod: 'google_oauth'
           }
         });
@@ -78,7 +108,7 @@ export default async function handler(req, res) {
       }
     }
 
-    // Direct Gmail email verification
+    // Direct email entry: Clearly marked as unverified guest profile for local device convenience
     if (email && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       const cleanEmail = email.trim().toLowerCase();
       const cleanName = (name || cleanEmail.split('@')[0]).trim();
@@ -86,12 +116,13 @@ export default async function handler(req, res) {
       return res.status(200).json({
         ok: true,
         user: {
-          id: 'usr_' + Date.now(),
+          id: 'guest_' + Date.now(),
           name: cleanName,
+          givenName: cleanName.split(' ')[0],
           email: cleanEmail,
-          picture: picture || '',
-          verified: true,
-          authMethod: 'gmail_direct'
+          picture: '',
+          verified: false, // Explicitly false: Not a verified Google account
+          authMethod: 'guest_convenience_profile'
         }
       });
     }

@@ -15,17 +15,17 @@ The integration provides end-to-end payment processing:
 
 | File Path | Role / Description |
 |:---|:---|
-| [package.json](file:///c:/Users/Panchanan/Downloads/panooja-landing-page/panooja-landing-page/package.json) | Node.js ESM configuration, `razorpay` (`^2.9.8`), `dotenv` (`^18.0.10`), and `npm start` script. |
-| [.env](file:///c:/Users/Panchanan/Downloads/panooja-landing-page/panooja-landing-page/.env) | Environment credentials (`RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET`), excluded from Git via `.gitignore`. |
-| [.env.example](file:///c:/Users/Panchanan/Downloads/panooja-landing-page/panooja-landing-page/.env.example) | Public repository template with environment variable placeholders for CI/CD and deployment. |
-| [.gitignore](file:///c:/Users/Panchanan/Downloads/panooja-landing-page/panooja-landing-page/.gitignore) | Git exclusions protecting `.env` and `node_modules/`. |
-| [api/create-order.js](file:///c:/Users/Panchanan/Downloads/panooja-landing-page/panooja-landing-page/api/create-order.js) | Serverless `POST /api/create-order` endpoint. Validates amount (>= 100 paise), initializes Razorpay order, returns `{ order_id, amount, currency, key_id }`. |
-| [api/verify-payment.js](file:///c:/Users/Panchanan/Downloads/panooja-landing-page/panooja-landing-page/api/verify-payment.js) | Serverless `POST /api/verify-payment` endpoint. Computes `HMAC-SHA256(order_id + "|" + payment_id, KEY_SECRET)` and verifies signatures with `crypto.timingSafeEqual`. |
-| [server.js](file:///c:/Users/Panchanan/Downloads/panooja-landing-page/panooja-landing-page/server.js) | Local Node.js HTTP server routing API requests to serverless handlers and serving static assets. |
-| [cart.js](file:///c:/Users/Panchanan/Downloads/panooja-landing-page/panooja-landing-page/cart.js) | Frontend client orchestration: validates customer shipping form, fetches order, mounts `Razorpay(options)`, handles success, failure, and dismissal. |
-| [index.html](file:///c:/Users/Panchanan/Downloads/panooja-landing-page/panooja-landing-page/index.html) | Main storefront with Razorpay checkout script and drawer checkout button. |
-| [checkout.html](file:///c:/Users/Panchanan/Downloads/panooja-landing-page/panooja-landing-page/checkout.html) | Dedicated checkout page with Razorpay script and event listener. |
-| [cart.html](file:///c:/Users/Panchanan/Downloads/panooja-landing-page/panooja-landing-page/cart.html) | Standalone cart view with Razorpay script included. |
+| `package.json` | Node.js ESM configuration, `razorpay` (`^2.9.8`), `dotenv` (`^18.0.10`), and `npm start` script. |
+| `.env` | Environment credentials (`RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET`), excluded from Git via `.gitignore`. |
+| `.env.example` | Public repository template with environment variable placeholders for CI/CD and deployment. |
+| `.gitignore` | Git exclusions protecting `.env` and `node_modules/`. |
+| `api/create-order.js` | Serverless `POST /api/create-order` endpoint. Validates amount (>= 100 paise), initializes Razorpay order, returns `{ order_id, amount, currency, key_id }`. |
+| `api/verify-payment.js` | Serverless `POST /api/verify-payment` endpoint. Computes `HMAC-SHA256(order_id + "|" + payment_id, KEY_SECRET)` and verifies signatures with `crypto.timingSafeEqual`. |
+| `server.js` | Local Node.js HTTP server routing API requests to serverless handlers and serving static assets. |
+| `cart.js` | Frontend client orchestration: validates customer shipping form, fetches order, mounts `Razorpay(options)`, handles success, failure, and dismissal. |
+| `index.html` | Main storefront with Razorpay checkout script and drawer checkout button. |
+| `checkout.html` | Dedicated checkout page with Razorpay script and event listener. |
+| `cart.html` | Standalone cart view with Razorpay script included. |
 
 ---
 
@@ -54,7 +54,7 @@ The integration provides end-to-end payment processing:
     "order_id": "order_U3HLUPkAzrkJvk",
     "amount": 242700,
     "currency": "INR",
-    "key_id": "rzp_test_U3H7dGLiy2pKOP"
+    "key_id": "rzp_test_..."
   }
   ```
 - **Validation & Error Codes:**
@@ -96,6 +96,6 @@ The integration provides end-to-end payment processing:
 
 ### Vercel / Netlify Deployment
 1. Set the following Environment Variables in your Vercel or Netlify project settings:
-   - `RAZORPAY_KEY_ID`: `rzp_test_U3H7dGLiy2pKOP` (or your live key `rzp_live_...`)
-   - `RAZORPAY_KEY_SECRET`: `W71B9tjZuHywebqeQJ9ADQge` (or your live secret)
+   - `RAZORPAY_KEY_ID`: `your_razorpay_key_id`
+   - `RAZORPAY_KEY_SECRET`: `[REDACTED_RAZORPAY_KEY_SECRET]` (obtain from Razorpay Dashboard)
 2. Deploy directly from the `main` branch. Both serverless functions (`api/create-order.js` and `api/verify-payment.js`) are located in the standard `api/` directory and will be detected automatically.

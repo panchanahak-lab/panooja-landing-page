@@ -468,6 +468,12 @@ h2 {
   grid-template-columns: repeat(4, 1fr);
   gap: 24px;
 }
+.launch-grid-curated {
+  grid-template-columns: repeat(2, 1fr);
+  max-width: 880px;
+  margin: 0 auto;
+  gap: 32px;
+}
 .launch-card {
   display: block;
   background: var(--white);
@@ -1436,7 +1442,8 @@ body.cart-open .cart-drawer {
   transform: translateX(0);
 }
 body.cart-open,
-body.modal-open {
+body.modal-open,
+body.checkout-modal-open {
   overflow: hidden;
 }
 .cart-drawer-header {
@@ -1940,11 +1947,13 @@ body.checkout-modal-open .checkout-modal-backdrop {
   width: 92%;
   max-width: 580px;
   max-height: 90vh;
-  background: var(--white);
+  background: #FFFFFF !important;
+  color: #050505 !important;
+  border: 1px solid var(--light-grey);
   border-radius: var(--radius-lg);
   z-index: 1310;
   overflow-y: auto;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.35);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.45);
   opacity: 0;
   pointer-events: none;
   transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s ease;
@@ -1955,6 +1964,7 @@ body.checkout-modal-open .checkout-modal {
   pointer-events: auto;
 }
 .checkout-modal-header {
+  background: #FFFFFF !important;
   padding: 22px 28px;
   display: flex;
   align-items: center;
@@ -1964,6 +1974,7 @@ body.checkout-modal-open .checkout-modal {
 .checkout-modal-header h3 {
   font-size: 1.6rem;
   margin: 0;
+  color: #050505 !important;
 }
 .checkout-modal-close {
   background: transparent;
@@ -1973,6 +1984,7 @@ body.checkout-modal-open .checkout-modal {
   color: var(--black);
 }
 .checkout-modal-body {
+  background: #FFFFFF !important;
   padding: 28px;
   display: flex;
   flex-direction: column;
@@ -2184,46 +2196,61 @@ body.checkout-modal-open .checkout-modal {
 }
 
 /* -------------------------------------------------------------
+   POLICY & LEGAL CONTENT PAGES
+------------------------------------------------------------- */
+.policy-page {
+  max-width: 840px;
+  margin: 0 auto;
+  padding: 40px 24px 80px;
+}
+.policy-page h1 {
+  font-family: var(--font-serif);
+  font-size: clamp(2.2rem, 5vw, 3rem);
+  font-weight: 400;
+  margin-bottom: 8px;
+  color: var(--black);
+}
+.policy-page .policy-subtitle {
+  font-size: 0.84rem;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--royal-blue);
+  font-weight: 600;
+  margin-bottom: 36px;
+}
+.policy-section {
+  margin-bottom: 36px;
+  padding-bottom: 24px;
+  border-bottom: 1px solid var(--light-grey);
+}
+.policy-section:last-child {
+  border-bottom: none;
+}
+.policy-section h2 {
+  font-family: var(--font-serif);
+  font-size: 1.55rem;
+  font-weight: 500;
+  margin-bottom: 12px;
+  color: var(--black);
+}
+.policy-section p, .policy-section li {
+  color: var(--charcoal);
+  font-size: 0.96rem;
+  line-height: 1.75;
+  margin-bottom: 12px;
+}
+.policy-section ul {
+  padding-left: 20px;
+  margin-bottom: 16px;
+}
+.policy-section li {
+  margin-bottom: 8px;
+}
+
+/* -------------------------------------------------------------
    RESPONSIVE DESIGN (TABLET & MOBILE)
 ------------------------------------------------------------- */
 @media (max-width: 1024px) {
-  .hero {
-    grid-template-columns: 1fr;
-    gap: 40px;
-    padding-top: 40px;
-    text-align: center;
-  }
-  .hero-text { margin: 20px auto 32px; }
-  .hero-actions { justify-content: center; }
-  .hero-visual { height: 440px; }
-  .section-heading { margin: 0 auto 40px; text-align: center; }
-  
-  .launch-grid { grid-template-columns: repeat(2, 1fr); }
-  
-  .waitlist-card {
-    grid-template-columns: 1fr;
-    gap: 40px;
-    text-align: center;
-    padding: 50px 36px;
-  }
-  .trust-points { gap: 30px; }
-  .story-panel { grid-template-columns: 1fr; }
-  .story-image { min-height: 400px; }
-  .story-copy { padding: 50px 36px; text-align: center; }
-  footer { grid-template-columns: 1fr; gap: 40px; text-align: center; }
-  .footer-brand { align-items: center; }
-  .footer-logo { margin: 0 auto 16px; }
-  .footer-desc { margin: 0 auto; }
-  .footer-links { justify-content: center; flex-wrap: wrap; }
-  .footer-policies { justify-content: center; flex-wrap: wrap; margin-top: 0; }
-}
-
-@media (max-width: 768px) {
-  .announcement {
-    font-size: 0.68rem;
-    letter-spacing: 0.12em;
-    padding: 10px 14px;
-  }
   .site-header { min-height: 72px; }
   .header-logo { width: 140px; }
   .menu-toggle { display: block; z-index: 60; }
@@ -2261,6 +2288,52 @@ body.checkout-modal-open .checkout-modal {
     border-color: var(--royal-blue);
   }
 
+  .hero {
+    grid-template-columns: 1fr;
+    gap: 40px;
+    padding-top: 40px;
+    text-align: center;
+  }
+  .hero-text { margin: 20px auto 32px; }
+  .hero-actions { justify-content: center; }
+  .hero-visual { height: 440px; }
+  .section-heading { margin: 0 auto 40px; text-align: center; }
+  
+  .collection-grid { grid-template-columns: 1fr; }
+  .collection-card, .collection-card-tall, .collection-card-wide {
+    min-height: 380px;
+    grid-row: auto;
+    grid-column: auto;
+  }
+
+  .launch-grid { grid-template-columns: repeat(2, 1fr); }
+  .launch-grid-curated { grid-template-columns: 1fr; max-width: 520px; gap: 24px; }
+  
+  .waitlist-card {
+    grid-template-columns: 1fr;
+    gap: 40px;
+    text-align: center;
+    padding: 50px 36px;
+  }
+  .trust-points { gap: 30px; }
+  .story-panel { grid-template-columns: 1fr; }
+  .story-image { min-height: 400px; }
+  .story-copy { padding: 50px 36px; text-align: center; }
+  footer { grid-template-columns: 1fr; gap: 40px; text-align: center; }
+  .footer-brand { align-items: center; }
+  .footer-logo { margin: 0 auto 16px; }
+  .footer-desc { margin: 0 auto; }
+  .footer-links { justify-content: center; flex-wrap: wrap; }
+  .footer-policies { justify-content: center; flex-wrap: wrap; margin-top: 0; }
+}
+
+@media (max-width: 768px) {
+  .announcement {
+    font-size: 0.68rem;
+    letter-spacing: 0.12em;
+    padding: 10px 14px;
+  }
+
   .section { padding: 75px max(20px, calc((100vw - 1240px) / 2)); }
   h1 { font-size: clamp(2.4rem, 9.5vw, 3.4rem); }
   h2 { font-size: clamp(1.9rem, 7.5vw, 2.4rem); }
@@ -2281,14 +2354,17 @@ body.checkout-modal-open .checkout-modal {
   summary { font-size: 1.25rem; gap: 16px; }
 
   /* Mobile Cart & Checkout Optimizations */
-  .header-actions { margin-left: auto; margin-right: 12px; }
+  .header-actions { margin-left: auto; margin-right: 0; gap: 8px; }
   .checkout-container { padding: 26px 16px !important; }
   .cart-container { padding: 20px 14px; }
   .cart-item { flex-wrap: wrap; gap: 12px !important; }
   .cart-item img { width: 64px !important; height: 84px !important; }
   .cart-item h4 { font-size: 1.15rem; color: var(--black); }
   .cart-item > div:nth-child(2) { flex: 1 1 100%; margin-bottom: 4px; }
-  .nav-cart { font-size: 0.78rem; padding: 6px 12px; }
+  .nav-cart { font-size: 0.78rem; padding: 6px 10px; }
+  .nav-account { padding: 6px 10px; font-size: 0.75rem; }
+  .nav-account #navAccountLabel { display: none; }
+  .header-logo { width: 125px; }
 
   /* Trust Strip Mobile 2x2 Grid */
   .trust-strip { padding: 20px 16px; }
