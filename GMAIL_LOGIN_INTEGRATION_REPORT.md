@@ -38,16 +38,21 @@ The test verified that once signed in via Gmail, the client profile details (Nam
 
 ---
 
-## 4. Google Cloud Console Setup (Optional Custom Client ID)
+## 4. Google Cloud Console Configuration
 
-To connect your own Google Cloud OAuth Client ID:
-1. Go to the [Google Cloud Console](https://console.cloud.google.com/apis/credentials).
-2. Create a new OAuth 2.0 Client ID for **Web Application**.
-3. Add Authorized JavaScript Origins:
-   - `https://www.panooja.com`
-   - `http://localhost:3000` (for local development)
-4. Add your Client ID to `.env`:
-   ```bash
-   GOOGLE_CLIENT_ID=your_client_id.apps.googleusercontent.com
-   ```
-   Or set `window.PANOOJA_GOOGLE_CLIENT_ID = 'your_client_id';` in `auth.js`.
+Your Google Client ID is configured and active in the project:
+```
+63300831514-5qg0db4qmdnfa5g4vkfqh339e3asriv2.apps.googleusercontent.com
+```
+
+### Important: Authorized JavaScript Origins in Google Cloud Console
+To ensure Google Sign-In displays and authenticates without origin errors, make sure the following domains are added under **Authorized JavaScript origins** in your [Google Cloud Console Credentials](https://console.cloud.google.com/apis/credentials):
+- `https://www.panooja.com`
+- `https://panooja.com`
+- `http://localhost:3000` (for local testing)
+- `http://localhost`
+
+And under **Authorized redirect URIs**:
+- `https://www.panooja.com`
+- `https://panooja.com`
+- `http://localhost:3000`
