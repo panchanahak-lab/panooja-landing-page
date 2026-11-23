@@ -176,9 +176,10 @@ class ProductCarousel {
     this.images = images || [];
     this.total = this.images.length;
     this.currentIndex = 0;
-    this.intervalTime = 3000; // 3 seconds loop
+    this.intervalTime = 3000; // 3 seconds continuous loop
     this.timer = null;
     this.isPaused = false;
+    this.isHovering = false;
     this.isPointerDown = false;
     this.startX = 0;
     this.startY = 0;
@@ -252,9 +253,11 @@ class ProductCarousel {
   bindEvents() {
     // 1. Desktop Hover: pause on mouseenter, resume on mouseleave
     this.viewport.addEventListener('mouseenter', () => {
+      this.isHovering = true;
       this.pause();
     });
     this.viewport.addEventListener('mouseleave', () => {
+      this.isHovering = false;
       if (!this.isPointerDown) {
         this.resume();
       }
@@ -269,7 +272,7 @@ class ProductCarousel {
           const targetIndex = parseInt(dot.getAttribute('data-index'), 10) || 0;
           this.goTo(targetIndex);
           this.stopTimer();
-          if (!this.isPaused) this.startTimer();
+          if (!this.isPaused && !this.isHovering) this.startTimer();
         });
       });
     }
@@ -281,7 +284,7 @@ class ProductCarousel {
         e.stopPropagation();
         this.prev();
         this.stopTimer();
-        if (!this.isPaused) this.startTimer();
+        if (!this.isPaused && !this.isHovering) this.startTimer();
       });
     }
     if (this.nextBtn) {
@@ -290,7 +293,7 @@ class ProductCarousel {
         e.stopPropagation();
         this.next();
         this.stopTimer();
-        if (!this.isPaused) this.startTimer();
+        if (!this.isPaused && !this.isHovering) this.startTimer();
       });
     }
 
@@ -328,14 +331,33 @@ class ProductCarousel {
         }
       }
 
-      // Resume auto-slide after brief release buffer
+      // Resume auto-slide after release buffer if not actively hovering on desktop
       setTimeout(() => {
         this.isSwiping = false;
-        this.resume();
-      }, 600);
+        if (!this.isHovering) {
+          this.resume();
+        }
+      }, 500);
     };
 
-    // Mobile touch events
+    // Native pointer events (pointerdown / pointerup / pointercancel)
+    this.viewport.addEventListener('pointerdown', (e) => {
+      handleStart(e.clientX, e.clientY);
+    });
+
+    window.addEventListener('pointerup', () => {
+      if (this.isPointerDown) {
+        handleEnd();
+      }
+    });
+
+    window.addEventListener('pointercancel', () => {
+      if (this.isPointerDown) {
+        handleEnd();
+      }
+    });
+
+    // Mobile touch events (fallback & fine touch drag)
     this.viewport.addEventListener('touchstart', (e) => {
       if (e.touches && e.touches[0]) {
         handleStart(e.touches[0].clientX, e.touches[0].clientY);
@@ -418,6 +440,10 @@ function extractProductImages(item, categoryKey) {
     item['Direct Image URL 2 (Auto)'],
     item['Direct Image URL 3 (Auto)'],
     item['Direct Image URL 4 (Auto)'],
+    item['Direct Image URL'],
+    item['Direct Image URL 2'],
+    item['Direct Image URL 3'],
+    item['Direct Image URL 4'],
     item['Google Drive Share Link'],
     item['Drive Link 2'],
     item['Drive Link 3'],
