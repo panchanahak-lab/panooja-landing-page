@@ -793,11 +793,6 @@ function injectProductSchema(products) {
   script.textContent = JSON.stringify(schemaData);
   document.head.appendChild(script);
 }
-  script.id = 'dynamicProductSchema';
-  script.type = 'application/ld+json';
-  script.textContent = JSON.stringify(itemList);
-  document.head.appendChild(script);
-}
 
 // Fetch and Render Live Products from Google Sheets
 async function loadLiveProducts() {
