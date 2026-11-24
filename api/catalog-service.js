@@ -112,8 +112,8 @@ export async function fetchCatalog(forceRefresh = false) {
       const rawMrp = item['MRP (INR)'] || item['MRP'] || '0';
       const cleanMrp = parseInt(String(rawMrp).replace(/[^0-9]/g, ''), 10) || cleanPrice;
 
-      const activeVal = (item['Active on Website (Yes/No)'] || 'Yes').toLowerCase();
-      const isActive = activeVal === 'yes' || activeVal === 'true' || activeVal === '1';
+      const activeVal = (item['Active on Website (Yes/No)'] || item['Active on Website'] || '').trim().toLowerCase();
+      const isActive = activeVal === 'yes';
 
       const stockStatus = (item['Stock Status (Auto)'] || 'In Stock').trim();
       const isOutOfStock = stockStatus.toLowerCase().includes('out of stock');
@@ -128,6 +128,7 @@ export async function fetchCatalog(forceRefresh = false) {
         price: cleanPrice,
         mrp: cleanMrp,
         isActive,
+        stockStatus,
         isOutOfStock,
         currentStock,
         offerTag: item['Offer Tag'] || '',
@@ -148,31 +149,9 @@ export async function fetchCatalog(forceRefresh = false) {
     }
   }
 
-  // Fallback: If live feed is unavailable and no cache exists, use trusted static verified catalog
-  const staticFallback = new Map([
-    ['PNJ-004', {
-      sku: 'PNJ-004',
-      name: 'Sea Shell Pearl Pendant Chain',
-      category: 'Pendants & Chains',
-      price: 539,
-      mrp: 899,
-      isActive: true,
-      isOutOfStock: false,
-      currentStock: 10
-    }],
-    ['PNJ-005', {
-      sku: 'PNJ-005',
-      name: 'Cat Eye Stud Earrings',
-      category: 'Earrings',
-      price: 219,
-      mrp: 399,
-      isActive: true,
-      isOutOfStock: false,
-      currentStock: 10
-    }]
-  ]);
-
-  return staticFallback;
+  // Google Sheet CSV is the single and only source of products across the website.
+  // If unavailable and no cache exists, return an empty map so no static/fallback products are ever used.
+  return new Map();
 }
 
 // Server-side calculation of order total, validating prices, stock, promo codes, and shipping

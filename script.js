@@ -655,15 +655,21 @@ async function loadLiveProducts() {
       return obj;
     });
 
-    // Filter products: "Active on Website (Yes/No)" === "Yes"
+    // Filter products: "Active on Website (Yes/No)" strictly equals "Yes"
     const activeProducts = rawItems.filter(item => {
-      const activeVal = item['Active on Website (Yes/No)'] || item['Active on Website'] || '';
-      return activeVal.toLowerCase() === 'yes';
+      const activeVal = (item['Active on Website (Yes/No)'] || item['Active on Website'] || '').trim().toLowerCase();
+      const hasNameOrSku = (item['Product Name'] || item['SKU'] || '').trim().length > 0;
+      return activeVal === 'yes' && hasNameOrSku;
     });
 
     if (activeProducts.length === 0) {
-      productGrid.innerHTML = '';
-      if (emptyMsg) emptyMsg.style.display = 'block';
+      productGrid.innerHTML = `
+        <div class="empty-category-msg" style="grid-column: 1 / -1; display: block; text-align: center; padding: 60px 24px;">
+          <h3 style="font-family: var(--font-heading, 'Cormorant Garamond', serif); font-size: 1.6rem; font-weight: 500; margin-bottom: 10px; color: var(--color-black, #050505);">No Active Products Available</h3>
+          <p style="color: var(--color-charcoal, #242424); font-size: 0.95rem;">Our catalogue is currently updating with fresh pieces. Please check back shortly.</p>
+        </div>
+      `;
+      if (emptyMsg) emptyMsg.style.display = 'none';
       return;
     }
 

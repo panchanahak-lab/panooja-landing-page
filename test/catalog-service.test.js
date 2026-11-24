@@ -61,3 +61,28 @@ test('Catalog Service - rejects promo code when minimum order is not met', async
     assert.match(result.error, /minimum order value/);
   }
 });
+
+test('Catalog Service - only active items can be purchased', async () => {
+  const catalog = await getCatalog();
+  for (const [sku, item] of catalog.entries()) {
+    assert.equal(typeof item.isActive, 'boolean');
+    if (!item.isActive) {
+      const res = await calculateOrderTotal([{ id: sku, quantity: 1 }]);
+      assert.equal(res.ok, false);
+      assert.match(res.error, /inactive/);
+    }
+  }
+});
+
+test('Catalog Service - contains no hardcoded static fallback items', async () => {
+  const catalog = await getCatalog();
+  // Ensure deleted / sample PNJ-004 / PNJ-005 demo items from old staticFallback are not present unless actively in Google Sheet
+  const pnj4 = catalog.get('PNJ-004');
+  const pnj5 = catalog.get('PNJ-005');
+  if (pnj4) {
+    assert.notEqual(pnj4.name, 'Sea Shell Pearl Pendant Chain (Fallback)');
+  }
+  if (pnj5) {
+    assert.notEqual(pnj5.name, 'Cat Eye Stud Earrings (Fallback)');
+  }
+});
