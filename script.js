@@ -442,10 +442,159 @@ const CATEGORY_FALLBACKS = {
   default: 'hero.jpg'
 };
 
-// Global Store of Loaded Products for Quick View & Filtering
+// Global Store of Loaded Products for Quick View, SEO & Filtering
 let loadedProductsMap = new Map();
+let loadedProductsBySlugMap = new Map();
 let currentQuickViewProduct = null;
 let currentQuickViewQty = 1;
+
+// Helper to normalize strings into URL-safe slugs
+function slugify(text) {
+  return String(text || '')
+    .toLowerCase()
+    .trim()
+    .replace(/[^\w\s-]/g, '')
+    .replace(/[\s_-]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+}
+
+// Default Storefront SEO Metadata (reverted on closing quick view)
+const DEFAULT_SEO = {
+  title: 'PANOOJA — Waterproof & Anti-Tarnish Jewellery India | Earrings, Rings & Chains',
+  description: 'Shop waterproof, anti-tarnish everyday luxury jewellery at PANOOJA India. Premium 316L stainless steel earrings, rings, chains & bracelets with free shipping over ₹799.',
+  keywords: 'anti tarnish jewellery India, waterproof jewellery, everyday gold jewellery, stainless steel earrings, anti tarnish rings, Panooja jewellery',
+  canonical: 'https://www.panooja.com/',
+  ogType: 'website',
+  ogTitle: 'PANOOJA — Waterproof & Anti-Tarnish Jewellery India',
+  ogDescription: 'Shop waterproof, anti-tarnish everyday luxury jewellery at PANOOJA India. Premium 316L stainless steel earrings, rings, chains & bracelets with free shipping over ₹799.',
+  ogImage: 'https://www.panooja.com/logo.png',
+  ogUrl: 'https://www.panooja.com/'
+};
+
+// Set or update dynamic SEO meta tags on document head
+function setPageMetadata(seo) {
+  if (seo.title) document.title = seo.title;
+
+  const setMeta = (attr, key, content) => {
+    let el = document.querySelector(`meta[${attr}="${key}"]`);
+    if (!el && content) {
+      el = document.createElement('meta');
+      el.setAttribute(attr, key);
+      document.head.appendChild(el);
+    }
+    if (el) {
+      el.setAttribute('content', content || '');
+    }
+  };
+
+  // Standard Meta Tags
+  setMeta('name', 'description', seo.description || DEFAULT_SEO.description);
+  setMeta('name', 'keywords', seo.keywords || DEFAULT_SEO.keywords);
+
+  // Canonical Link
+  let canonicalEl = document.querySelector('link[rel="canonical"]');
+  if (!canonicalEl) {
+    canonicalEl = document.createElement('link');
+    canonicalEl.setAttribute('rel', 'canonical');
+    document.head.appendChild(canonicalEl);
+  }
+  canonicalEl.setAttribute('href', seo.canonical || DEFAULT_SEO.canonical);
+
+  // Open Graph Tags
+  setMeta('property', 'og:type', seo.ogType || (seo.isProduct ? 'product' : 'website'));
+  setMeta('property', 'og:title', seo.ogTitle || seo.title || DEFAULT_SEO.ogTitle);
+  setMeta('property', 'og:description', seo.ogDescription || seo.description || DEFAULT_SEO.ogDescription);
+  setMeta('property', 'og:image', seo.ogImage || DEFAULT_SEO.ogImage);
+  setMeta('property', 'og:url', seo.ogUrl || seo.canonical || DEFAULT_SEO.ogUrl);
+
+  // Twitter Cards
+  setMeta('name', 'twitter:title', seo.ogTitle || seo.title || DEFAULT_SEO.ogTitle);
+  setMeta('name', 'twitter:description', seo.ogDescription || seo.description || DEFAULT_SEO.ogDescription);
+  setMeta('name', 'twitter:image', seo.ogImage || DEFAULT_SEO.ogImage);
+}
+
+function restoreDefaultMetadata() {
+  setPageMetadata(DEFAULT_SEO);
+  const activeSchema = document.getElementById('activeProductSchema');
+  if (activeSchema) activeSchema.remove();
+}
+
+function setProductMetadata(product) {
+  if (!product) return;
+  const productCanonical = `https://www.panooja.com/product/${product.slug}`;
+  const firstImage = (product.images && product.images.length > 0) ? product.images[0] : (product.img || DEFAULT_SEO.ogImage);
+
+  setPageMetadata({
+    isProduct: true,
+    title: product.seoTitle || `${product.name} | Anti-Tarnish Jewellery — PANOOJA`,
+    description: product.seoDescription || product.desc || DEFAULT_SEO.description,
+    keywords: product.seoKeywords || DEFAULT_SEO.keywords,
+    canonical: productCanonical,
+    ogType: 'product',
+    ogTitle: product.seoTitle || product.name,
+    ogDescription: product.seoDescription || product.desc,
+    ogImage: firstImage,
+    ogUrl: productCanonical
+  });
+
+  setProductActiveSchema(product);
+}
+
+function setProductActiveSchema(product) {
+  const existing = document.getElementById('activeProductSchema');
+  if (existing) existing.remove();
+  if (!product) return;
+
+  const productSchema = {
+    '@context': 'https://schema.org',
+    '@type': 'Product',
+    '@id': `https://www.panooja.com/product/${product.slug}#product`,
+    'url': `https://www.panooja.com/product/${product.slug}`,
+    'name': product.name,
+    'sku': product.sku,
+    'description': product.seoDescription || product.desc,
+    'image': product.images && product.images.length > 0 ? product.images : [product.img],
+    'category': product.category,
+    'brand': {
+      '@type': 'Brand',
+      'name': 'PANOOJA'
+    },
+    'material': '316L Surgical Stainless Steel, 18K Gold PVD Plating',
+    'offers': {
+      '@type': 'Offer',
+      'url': `https://www.panooja.com/product/${product.slug}`,
+      'priceCurrency': 'INR',
+      'price': product.finalPrice,
+      'priceValidUntil': '2027-12-31',
+      'itemCondition': 'https://schema.org/NewCondition',
+      'availability': product.isOutOfStock ? 'https://schema.org/OutOfStock' : 'https://schema.org/InStock',
+      'seller': {
+        '@type': 'Organization',
+        'name': 'PANOOJA'
+      }
+    }
+  };
+
+  const script = document.createElement('script');
+  script.id = 'activeProductSchema';
+  script.type = 'application/ld+json';
+  script.textContent = JSON.stringify(productSchema);
+  document.head.appendChild(script);
+}
+
+function findProductBySlugOrSku(query) {
+  if (!query) return null;
+  const q = String(query).toLowerCase().trim().replace(/^\/product\//, '').replace(/^\//, '');
+  if (loadedProductsBySlugMap.has(q)) {
+    return loadedProductsBySlugMap.get(q);
+  }
+  for (const p of loadedProductsMap.values()) {
+    if ((p.slug && p.slug.toLowerCase() === q) || (p.sku && p.sku.toLowerCase() === q)) {
+      return p;
+    }
+  }
+  return null;
+}
 
 // Collect all non-empty, unique image URLs from the Google Sheet columns:
 // Direct Image URL (Auto), Direct Image URL 2 (Auto), Direct Image URL 3 (Auto), Direct Image URL 4 (Auto)
@@ -599,36 +748,51 @@ function applyCategoryFilter() {
   }
 }
 
-// Inject Schema.org JSON-LD for Products
+// Inject Schema.org JSON-LD for Products (individual Product schemas in @graph)
 function injectProductSchema(products) {
   const existingSchema = document.getElementById('dynamicProductSchema');
   if (existingSchema) existingSchema.remove();
 
-  const itemList = {
-    '@context': 'https://schema.org',
-    '@type': 'ItemList',
-    'name': 'PANOOJA Waterproof & Anti-Tarnish Jewellery Collection',
-    'itemListElement': products.map((item, index) => ({
-      '@type': 'ListItem',
-      'position': index + 1,
-      'item': {
-        '@type': 'Product',
-        'name': item.name,
-        'description': item.desc || 'Waterproof and anti-tarnish 316L stainless steel jewellery by PANOOJA.',
-        'image': item.images,
-        'sku': item.sku,
-        'offers': {
-          '@type': 'Offer',
-          'priceCurrency': 'INR',
-          'price': item.finalPrice,
-          'availability': item.isOutOfStock ? 'https://schema.org/OutOfStock' : 'https://schema.org/InStock',
-          'url': 'https://www.panooja.com/#shop'
-        }
+  const productGraph = products.map((item) => ({
+    '@type': 'Product',
+    '@id': `https://www.panooja.com/product/${item.slug}#product`,
+    'url': `https://www.panooja.com/product/${item.slug}`,
+    'name': item.name,
+    'sku': item.sku,
+    'description': item.seoDescription || item.desc || 'Waterproof and anti-tarnish 316L stainless steel jewellery by PANOOJA.',
+    'image': item.images && item.images.length > 0 ? item.images : [item.img],
+    'category': item.category,
+    'brand': {
+      '@type': 'Brand',
+      'name': 'PANOOJA'
+    },
+    'material': '316L Surgical Stainless Steel, 18K Gold PVD Plating',
+    'offers': {
+      '@type': 'Offer',
+      'url': `https://www.panooja.com/product/${item.slug}`,
+      'priceCurrency': 'INR',
+      'price': item.finalPrice,
+      'priceValidUntil': '2027-12-31',
+      'itemCondition': 'https://schema.org/NewCondition',
+      'availability': item.isOutOfStock ? 'https://schema.org/OutOfStock' : 'https://schema.org/InStock',
+      'seller': {
+        '@type': 'Organization',
+        'name': 'PANOOJA'
       }
-    }))
+    }
+  }));
+
+  const schemaData = {
+    '@context': 'https://schema.org',
+    '@graph': productGraph
   };
 
   const script = document.createElement('script');
+  script.id = 'dynamicProductSchema';
+  script.type = 'application/ld+json';
+  script.textContent = JSON.stringify(schemaData);
+  document.head.appendChild(script);
+}
   script.id = 'dynamicProductSchema';
   script.type = 'application/ld+json';
   script.textContent = JSON.stringify(itemList);
@@ -691,6 +855,7 @@ async function loadLiveProducts() {
     if (emptyMsg) emptyMsg.style.display = 'none';
     productGrid.innerHTML = '';
     loadedProductsMap.clear();
+    loadedProductsBySlugMap.clear();
 
     const formattedProducts = [];
 
@@ -704,6 +869,15 @@ async function loadLiveProducts() {
       const stockStatus = item['Stock Status (Auto)'] || 'In Stock';
       const isOutOfStock = stockStatus.toLowerCase().includes('out of stock');
       const isLowStock = stockStatus.toLowerCase().includes('low stock');
+
+      // SEO Fields from Connected Google Sheet
+      const rawSlug = (item['SEO URL Slug (Auto)'] || item['SEO URL Slug'] || item['Slug'] || '').trim().replace(/^\/product\//, '').replace(/^\//, '');
+      const slug = rawSlug || slugify(name || sku);
+      const seoTitle = (item['SEO Title (Auto)'] || item['SEO Title'] || '').trim() || `${name} | Anti-Tarnish Jewellery — PANOOJA`;
+      const seoDescription = (item['SEO Meta Description (Auto)'] || item['SEO Meta Description'] || '').trim() || desc;
+      const seoKeywords = (item['SEO Keywords (Auto)'] || item['SEO Keywords'] || '').trim();
+      const imageAlt = (item['Image Alt Text (Auto)'] || item['Image Alt Text'] || '').trim() || `${name} — Anti-Tarnish Waterproof Jewellery by PANOOJA`;
+      const productUrl = `/product/${slug}`;
 
       // Parse Current Stock numeric value
       const rawCurrentStock = item['Current Stock (Auto)'] || '';
@@ -723,6 +897,7 @@ async function loadLiveProducts() {
 
       const productObj = {
         sku,
+        slug,
         name,
         category,
         categoryKey,
@@ -738,10 +913,18 @@ async function loadLiveProducts() {
         discount,
         images,
         img: images[0] || fallbackImg,
-        fallbackImg
+        fallbackImg,
+        seoTitle,
+        seoDescription,
+        seoKeywords,
+        imageAlt,
+        url: productUrl
       };
 
       loadedProductsMap.set(sku, productObj);
+      if (slug) {
+        loadedProductsBySlugMap.set(slug.toLowerCase(), productObj);
+      }
       formattedProducts.push(productObj);
 
       // Create Product Card DOM Element
@@ -749,6 +932,7 @@ async function loadLiveProducts() {
       card.className = `product-card reveal visible ${isOutOfStock ? 'is-out-of-stock' : ''}`;
       card.setAttribute('data-category', categoryKey);
       card.setAttribute('data-sku', sku);
+      card.setAttribute('data-slug', slug);
 
       // Badges
       let badgesHtml = '';
@@ -763,12 +947,15 @@ async function loadLiveProducts() {
         badgesHtml += `<span class="product-stock-badge low-stock">Low Stock</span>`;
       }
 
-      // Build Carousel Slides HTML
-      const slidesHtml = images.map((imgUrl, i) => `
+      // Build Carousel Slides HTML using Image Alt Text (Auto)
+      const slidesHtml = images.map((imgUrl, i) => {
+        const slideAlt = i === 0 ? imageAlt : `${imageAlt} - Photo ${i + 1}`;
+        return `
         <div class="carousel-slide">
-          <img src="${escapeHTML(imgUrl)}" alt="${escapeHTML(name)} - Photo ${i + 1}" loading="lazy" referrerPolicy="no-referrer" onerror="if(this.src!=='${fallbackImg}'){this.src='${fallbackImg}';}" />
+          <img src="${escapeHTML(imgUrl)}" alt="${escapeHTML(slideAlt)}" loading="lazy" referrerPolicy="no-referrer" onerror="if(this.src!=='${fallbackImg}'){this.src='${fallbackImg}';}" />
         </div>
-      `).join('');
+      `;
+      }).join('');
 
       // Build Dot Indicators HTML
       const dotsHtml = images.length > 1 ? `
@@ -800,7 +987,7 @@ async function loadLiveProducts() {
         : `<button class="button button-primary add-to-cart-btn" data-id="${escapeHTML(sku)}" data-title="${escapeHTML(name)}" data-price="${finalPriceNum}" data-img="${escapeHTML(images[0])}" data-category="${escapeHTML(category)}">Add to Cart</button>`;
 
       card.innerHTML = `
-        <div class="product-img-wrap" data-sku="${escapeHTML(sku)}">
+        <div class="product-img-wrap quick-view-trigger" data-sku="${escapeHTML(sku)}" data-slug="${escapeHTML(slug)}" style="cursor: pointer;">
           ${badgesHtml}
           <div class="carousel-viewport" data-sku="${escapeHTML(sku)}">
             <div class="carousel-track">
@@ -812,7 +999,9 @@ async function loadLiveProducts() {
         </div>
         <div class="product-info">
           <span class="product-category-tag">${escapeHTML(category)}</span>
-          <h3 class="quick-view-trigger" data-sku="${escapeHTML(sku)}" style="cursor: pointer;">${escapeHTML(name)}</h3>
+          <a href="/product/${escapeHTML(slug)}" class="quick-view-trigger product-title-link" data-sku="${escapeHTML(sku)}" data-slug="${escapeHTML(slug)}" style="text-decoration: none; color: inherit; display: block;">
+            <h3 style="margin: 0;">${escapeHTML(name)}</h3>
+          </a>
           ${desc ? `<p class="product-description">${escapeHTML(desc)}</p>` : ''}
           <div class="product-price-row">
             ${priceHtml}
@@ -827,17 +1016,20 @@ async function loadLiveProducts() {
       const viewportEl = card.querySelector('.carousel-viewport');
       if (viewportEl) {
         const carousel = new ProductCarousel(viewportEl, images, {
-          onImageClick: () => openQuickView(sku)
+          onImageClick: () => openQuickView(sku, true)
         });
         activeCarousels.push(carousel);
       }
     });
 
-    // Inject SEO Schema for Products
+    // Inject SEO Schema for Products (Individual Product Schema per item)
     injectProductSchema(formattedProducts);
 
     // Apply active category filter
     applyCategoryFilter();
+
+    // Deep linking: Open product modal if visiting a unique product URL (/product/:slug or ?product=:slug)
+    checkInitialProductDeepLink();
 
   } catch (err) {
     console.error('Live Google Sheets Catalog Fetch Error:', err);
@@ -857,14 +1049,27 @@ async function loadLiveProducts() {
 }
 
 // =============================================================
-// PRODUCT QUICK-VIEW MODAL LOGIC (WITH IMAGE CAROUSEL)
+// PRODUCT QUICK-VIEW MODAL LOGIC (WITH UNIQUE SEO URL & METADATA)
 // =============================================================
-function openQuickView(sku) {
-  const product = loadedProductsMap.get(sku);
+function openQuickView(skuOrSlug, updateUrl = true) {
+  const product = findProductBySlugOrSku(skuOrSlug);
   if (!product) return;
 
   currentQuickViewProduct = product;
   currentQuickViewQty = 1;
+
+  // Update browser URL to unique product link (/product/:slug)
+  if (updateUrl) {
+    const productPath = `/product/${product.slug}`;
+    try {
+      history.pushState({ type: 'product', sku: product.sku, slug: product.slug }, '', productPath);
+    } catch (e) {
+      history.pushState({ type: 'product', sku: product.sku, slug: product.slug }, '', `?product=${encodeURIComponent(product.slug)}`);
+    }
+  }
+
+  // Dynamically set per-product SEO metadata (<title>, <meta description>, <meta keywords>, <link rel="canonical">, Open Graph tags)
+  setProductMetadata(product);
 
   const quickViewCarouselEl = document.getElementById('quickViewCarousel');
   const quickViewTrackEl = document.getElementById('quickViewTrack');
@@ -889,16 +1094,19 @@ function openQuickView(sku) {
     quickViewCarouselInstance = null;
   }
 
-  // Setup Quick View Images & Carousel
+  // Setup Quick View Images & Carousel using Image Alt Text (Auto)
   const images = (product.images && product.images.length > 0) ? product.images : [product.img];
 
   if (quickViewTrackEl) {
     quickViewTrackEl.style.transform = 'translateX(0%)';
-    quickViewTrackEl.innerHTML = images.map((imgUrl, i) => `
+    quickViewTrackEl.innerHTML = images.map((imgUrl, i) => {
+      const slideAlt = i === 0 ? product.imageAlt : `${product.imageAlt} - Angle ${i + 1}`;
+      return `
       <div class="carousel-slide">
-        <img src="${escapeHTML(imgUrl)}" alt="${escapeHTML(product.name)} - View ${i + 1}" referrerPolicy="no-referrer" onerror="if(this.src!=='${product.fallbackImg}'){this.src='${product.fallbackImg}';}" />
+        <img src="${escapeHTML(imgUrl)}" alt="${escapeHTML(slideAlt)}" referrerPolicy="no-referrer" onerror="if(this.src!=='${product.fallbackImg}'){this.src='${product.fallbackImg}';}" />
       </div>
-    `).join('');
+    `;
+    }).join('');
   }
 
   if (quickViewDotsEl) {
@@ -989,7 +1197,7 @@ function openQuickView(sku) {
   document.body.classList.add('quick-view-open');
 }
 
-function closeQuickView() {
+function closeQuickView(updateUrl = true) {
   document.body.classList.remove('quick-view-open');
   if (quickViewCarouselInstance) {
     quickViewCarouselInstance.destroy();
@@ -997,15 +1205,83 @@ function closeQuickView() {
   }
   currentQuickViewProduct = null;
   currentQuickViewQty = 1;
+
+  // Restore URL back to clean root
+  if (updateUrl) {
+    try {
+      history.pushState(null, '', '/');
+    } catch (e) {
+      history.pushState(null, '', window.location.pathname);
+    }
+  }
+
+  // Restore Default Store Metadata & remove active product schema
+  restoreDefaultMetadata();
 }
 
-// Delegated Click for Quick View Openers (e.g. clicking title)
+// Deep linking: Open product modal if visiting a unique product URL (/product/:slug or ?product=:slug)
+function checkInitialProductDeepLink() {
+  const path = window.location.pathname;
+  const params = new URLSearchParams(window.location.search);
+  const productParam = params.get('product');
+
+  let slug = '';
+  if (path.startsWith('/product/')) {
+    slug = path.replace('/product/', '').replace(/\/$/, '').trim();
+  } else if (productParam) {
+    slug = productParam.trim();
+  }
+
+  if (slug) {
+    const product = findProductBySlugOrSku(slug);
+    if (product) {
+      openQuickView(product.sku, false);
+      const card = document.querySelector(`.product-card[data-sku="${product.sku}"]`);
+      if (card) {
+        setTimeout(() => card.scrollIntoView({ behavior: 'smooth', block: 'center' }), 150);
+      }
+    }
+  }
+}
+
+// Browser Back / Forward Button Navigation (popstate)
+window.addEventListener('popstate', (e) => {
+  const path = window.location.pathname;
+  const params = new URLSearchParams(window.location.search);
+  const productParam = params.get('product');
+
+  let slug = '';
+  if (path.startsWith('/product/')) {
+    slug = path.replace('/product/', '').replace(/\/$/, '').trim();
+  } else if (productParam) {
+    slug = productParam.trim();
+  }
+
+  if (slug) {
+    const product = findProductBySlugOrSku(slug);
+    if (product) {
+      openQuickView(product.sku, false);
+      return;
+    }
+  }
+
+  if (document.body.classList.contains('quick-view-open')) {
+    closeQuickView(false);
+  }
+});
+
+// Delegated Click for Quick View Openers (e.g. clicking title, image, or card trigger)
 document.addEventListener('click', (e) => {
   const trigger = e.target.closest('.quick-view-trigger');
-  if (trigger && !trigger.classList.contains('product-img-wrap')) {
-    const sku = trigger.getAttribute('data-sku');
-    if (sku) {
-      openQuickView(sku);
+  if (trigger) {
+    // If clicking a carousel arrow or navigation dot, let carousel handle it
+    if (e.target.closest('.carousel-arrow') || e.target.closest('.carousel-dot')) {
+      return;
+    }
+    e.preventDefault();
+    const target = trigger.getAttribute('data-slug') || trigger.getAttribute('data-sku');
+    if (target) {
+      openQuickView(target, true);
     }
   }
 });
@@ -1013,11 +1289,11 @@ document.addEventListener('click', (e) => {
 // Quick View Close Listeners
 const closeQuickViewBtn = document.getElementById('closeQuickView');
 if (closeQuickViewBtn) {
-  closeQuickViewBtn.addEventListener('click', closeQuickView);
+  closeQuickViewBtn.addEventListener('click', () => closeQuickView(true));
 }
 const quickViewBackdrop = document.getElementById('quickViewBackdrop');
 if (quickViewBackdrop) {
-  quickViewBackdrop.addEventListener('click', closeQuickView);
+  quickViewBackdrop.addEventListener('click', () => closeQuickView(true));
 }
 
 // Quick View Quantity Controls

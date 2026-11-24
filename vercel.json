@@ -1,6 +1,12 @@
 {
   "cleanUrls": true,
   "trailingSlash": false,
+  "rewrites": [
+    {
+      "source": "/product/:slug",
+      "destination": "/api/product-seo?slug=:slug"
+    }
+  ],
   "redirects": [
     {
       "source": "/index.html",

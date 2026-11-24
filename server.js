@@ -9,6 +9,7 @@ import createOrderHandler from './api/create-order.js';
 import verifyPaymentHandler from './api/verify-payment.js';
 import earlyAccessHandler from './api/early-access.js';
 import googleAuthHandler from './api/auth/google.js';
+import productSeoHandler from './api/product-seo.js';
 
 dotenv.config();
 
@@ -80,6 +81,14 @@ function adaptReqRes(req, res, handler) {
       return this;
     };
 
+    res.send = function(data) {
+      if (!this.getHeader('Content-Type')) {
+        this.setHeader('Content-Type', 'text/html; charset=utf-8');
+      }
+      this.end(data);
+      return this;
+    };
+
     try {
       await handler(req, res);
     } catch (err) {
@@ -101,6 +110,13 @@ const server = http.createServer((req, res) => {
 
   const [pathname] = req.url.split('?');
 
+  // Product SEO Deep Links (/product/:slug)
+  if (pathname.startsWith('/product/')) {
+    const slug = pathname.replace('/product/', '').replace(/\/$/, '');
+    req.query = { slug };
+    return adaptReqRes(req, res, productSeoHandler);
+  }
+
   // API Routes
   if (pathname === '/api/create-order') {
     return adaptReqRes(req, res, createOrderHandler);
@@ -113,6 +129,9 @@ const server = http.createServer((req, res) => {
   }
   if (pathname === '/api/auth/google') {
     return adaptReqRes(req, res, googleAuthHandler);
+  }
+  if (pathname === '/api/product-seo') {
+    return adaptReqRes(req, res, productSeoHandler);
   }
 
   // Security Check: Block sensitive files (.env, .git, data, node_modules)

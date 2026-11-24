@@ -12,7 +12,7 @@ let lastCacheTime = 0;
 const CACHE_TTL_MS = 60 * 1000;
 
 // Safe CSV parser handling quotes, commas, escaped quotes and multi-line fields
-function parseCSV(text) {
+export function parseCSV(text) {
   const rows = [];
   let row = [];
   let field = '';
@@ -47,6 +47,15 @@ function parseCSV(text) {
     rows.push(row);
   }
   return rows;
+}
+
+export function slugify(text) {
+  return String(text || '')
+    .toLowerCase()
+    .trim()
+    .replace(/[^\w\s-]/g, '')
+    .replace(/[\s_-]+/g, '-')
+    .replace(/^-+|-+$/g, '');
 }
 
 // Fetch live catalog from Google Sheets or memory cache
@@ -120,9 +129,25 @@ export async function fetchCatalog(forceRefresh = false) {
 
       const currentStock = parseInt(String(item['Current Stock (Auto)'] || '10').replace(/[^0-9]/g, ''), 10) || 0;
 
+      const images = [
+        item['Direct Image URL (Auto)'],
+        item['Direct Image URL 2 (Auto)'],
+        item['Direct Image URL 3 (Auto)'],
+        item['Direct Image URL 4 (Auto)']
+      ].filter(url => typeof url === 'string' && url.trim().length > 0);
+
+      const rawSlug = (item['SEO URL Slug (Auto)'] || item['SEO URL Slug'] || '').trim().replace(/^\/product\//, '').replace(/^\//, '');
+      const productName = item['Product Name'] || sku;
+      const slug = rawSlug || slugify(productName || sku);
+      const seoTitle = (item['SEO Title (Auto)'] || item['SEO Title'] || '').trim() || `${productName} | Anti-Tarnish Jewellery — PANOOJA`;
+      const seoDescription = (item['SEO Meta Description (Auto)'] || item['SEO Meta Description'] || '').trim() || item['Description'] || 'Modern waterproof and anti-tarnish everyday luxury jewellery by PANOOJA.';
+      const seoKeywords = (item['SEO Keywords (Auto)'] || item['SEO Keywords'] || '').trim();
+      const imageAlt = (item['Image Alt Text (Auto)'] || item['Image Alt Text'] || '').trim() || `${productName} — Anti-Tarnish Waterproof Jewellery by PANOOJA`;
+
       catalogMap.set(sku, {
         sku,
-        name: item['Product Name'] || sku,
+        slug,
+        name: productName,
         category: item['Category'] || 'Jewellery',
         description: item['Description'] || '',
         price: cleanPrice,
@@ -132,7 +157,13 @@ export async function fetchCatalog(forceRefresh = false) {
         isOutOfStock,
         currentStock,
         offerTag: item['Offer Tag'] || '',
-        image: item['Direct Image URL (Auto)'] || ''
+        image: images[0] || item['Direct Image URL (Auto)'] || '',
+        images,
+        seoTitle,
+        seoDescription,
+        seoKeywords,
+        imageAlt,
+        url: `https://www.panooja.com/product/${slug}`
       });
     }
 
@@ -152,6 +183,20 @@ export async function fetchCatalog(forceRefresh = false) {
   // Google Sheet CSV is the single and only source of products across the website.
   // If unavailable and no cache exists, return an empty map so no static/fallback products are ever used.
   return new Map();
+}
+
+// Find an active product by its SEO slug or SKU
+export async function getProductBySlug(slugOrSku) {
+  if (!slugOrSku) return null;
+  const normalized = String(slugOrSku).toLowerCase().trim().replace(/^\/product\//, '').replace(/^\//, '');
+  const catalog = await fetchCatalog();
+  
+  for (const product of catalog.values()) {
+    if (product.slug.toLowerCase() === normalized || product.sku.toLowerCase() === normalized) {
+      return product;
+    }
+  }
+  return null;
 }
 
 // Server-side calculation of order total, validating prices, stock, promo codes, and shipping
