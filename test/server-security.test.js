@@ -19,6 +19,12 @@ test('Server Security - serves proper security headers', async () => {
   assert.equal(res.headers.get('referrer-policy'), 'strict-origin-when-cross-origin');
 });
 
+test('Server Security - redirects /index.html to / for clean URLs', async () => {
+  const res = await fetch('http://localhost:3000/index.html', { redirect: 'manual' });
+  assert.equal(res.status, 301);
+  assert.equal(res.headers.get('location'), '/');
+});
+
 test('Server Security - early access rate limits spam attempts', async () => {
   const payload = JSON.stringify({ email: `test_ratelimit_${Date.now()}@example.com` });
   

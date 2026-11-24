@@ -14,6 +14,21 @@ if (menuToggle) {
   });
 }
 
+// Brand logo smooth scroll to top on homepage without reloading or changing URL
+const brandLogo = document.querySelector('.site-header a.brand');
+if (brandLogo) {
+  brandLogo.addEventListener('click', (e) => {
+    const isHomePage = window.location.pathname === '/' || window.location.pathname.endsWith('index.html') || window.location.pathname === '';
+    if (isHomePage) {
+      e.preventDefault();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      if (window.location.hash || window.location.pathname.endsWith('index.html')) {
+        history.replaceState(null, '', '/');
+      }
+    }
+  });
+}
+
 navLinks.forEach((link) => {
   link.addEventListener('click', () => {
     document.body.classList.remove('menu-open');

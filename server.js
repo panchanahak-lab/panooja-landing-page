@@ -133,6 +133,17 @@ const server = http.createServer((req, res) => {
 
   // Static File Serving
   let reqPath = pathname;
+
+  // Clean URL redirect: /index.html -> /
+  if (pathname === '/index.html') {
+    res.writeHead(301, {
+      'Location': '/',
+      'Cache-Control': 'no-cache, no-store, must-revalidate'
+    });
+    res.end();
+    return;
+  }
+
   if (reqPath === '/' || reqPath === '') reqPath = '/index.html';
 
   const filePath = path.resolve(__dirname, '.' + reqPath);

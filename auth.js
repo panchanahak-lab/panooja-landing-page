@@ -360,7 +360,7 @@
           if (typeof window.openCartDrawer === 'function') {
             window.openCartDrawer();
           } else {
-            window.location.href = 'index.html#shop';
+            window.location.href = '/#shop';
           }
         });
       }

@@ -682,7 +682,7 @@ function showPaymentSuccessDialog(details) {
   if (closeBtn) {
     closeBtn.addEventListener('click', () => {
       modal.remove();
-      window.location.href = 'index.html#shop';
+      window.location.href = '/#shop';
     });
   }
 }
