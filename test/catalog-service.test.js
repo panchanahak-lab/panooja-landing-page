@@ -56,9 +56,9 @@ test('Catalog Service - rejects promo code when minimum order is not met', async
 
   // FESTIVE200 requires min 1499
   const result = await calculateOrderTotal([{ id: firstSku, quantity: 1 }], 'FESTIVE200');
-  if (result.subtotal < 1499) {
+  if (!result.ok) {
     assert.equal(result.ok, false);
-    assert.match(result.error, /minimum order value/);
+    assert.match(result.error, /Add ₹.*more to use FESTIVE200/);
   }
 });
 

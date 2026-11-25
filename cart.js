@@ -1,10 +1,187 @@
-// cart.js - PANOOJA Luxury E-Commerce Cart Engine & WhatsApp Checkout
+// cart.js - PANOOJA Luxury E-Commerce Cart Engine, Live Offers & Checkout
 const PANOOJA_WHATSAPP_NUMBER = '919876543210'; // Official PANOOJA WhatsApp concierge number
+const OFFERS_SHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQ1yF6fF2S8x5dH3u24uH2DNt8WOl9xZ_UTLA6JNmAWbn1XUroDBjS6M-GPXlSHLLtkSaXTllKNQz-n/pub?gid=2&single=true&output=csv';
 const FREE_SHIPPING_THRESHOLD = 799;
 const STANDARD_SHIPPING_FEE = 79;
 
 let cart = JSON.parse(localStorage.getItem('panooja_cart')) || [];
 let appliedCoupon = localStorage.getItem('panooja_coupon') || null;
+let liveOffersMap = new Map();
+let liveOffersLoaded = false;
+let offersFetchPromise = null;
+let lastPromoFeedback = { type: '', message: '' };
+
+function escapeCartHtml(str) {
+  return String(str || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
+// Self-contained RFC-4180 CSV parser for Offers Sheet
+function parseOffersCsvText(text) {
+  const rows = [];
+  let row = [];
+  let field = '';
+  let inQuotes = false;
+
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (c === '"') {
+      if (inQuotes && text[i + 1] === '"') {
+        field += '"';
+        i++;
+      } else {
+        inQuotes = !inQuotes;
+      }
+    } else if (c === ',' && !inQuotes) {
+      row.push(field);
+      field = '';
+    } else if ((c === '\r' || c === '\n') && !inQuotes) {
+      if (c === '\r' && text[i + 1] === '\n') i++;
+      row.push(field);
+      field = '';
+      if (row.some(cell => cell.trim() !== '')) {
+        rows.push(row);
+      }
+      row = [];
+    } else {
+      field += c;
+    }
+  }
+  if (field.length > 0 || row.length > 0) {
+    row.push(field);
+    if (row.some(cell => cell.trim() !== '')) {
+      rows.push(row);
+    }
+  }
+  return rows;
+}
+
+function normalizeOfferCategoryGroup(cat) {
+  const c = String(cat || '').trim().toLowerCase();
+  if (!c || c === 'all' || c === 'all products') return 'all';
+  if (c.includes('earring')) return 'earrings';
+  if (c.includes('ring')) return 'rings';
+  if (c.includes('pendant') || c.includes('chain') || c.includes('necklace')) return 'pendants';
+  if (c.includes('kada') || c.includes('bracelet') || c.includes('bangle')) return 'bracelets';
+  return c;
+}
+
+function doesCartItemMatchOfferCategory(itemCategory, appliesTo) {
+  const parts = String(appliesTo || '').split(',').map(p => p.trim()).filter(Boolean);
+  if (parts.length === 0) return true;
+  const rawItem = String(itemCategory || '').trim().toLowerCase();
+  const itemGroup = normalizeOfferCategoryGroup(itemCategory);
+  return parts.some(part => {
+    const partGroup = normalizeOfferCategoryGroup(part);
+    if (partGroup === 'all') return true;
+    return rawItem === part.toLowerCase() || itemGroup === partGroup;
+  });
+}
+
+function parseOffersFromCsv(csvData) {
+  const rows = parseOffersCsvText(csvData);
+  const offers = new Map();
+  if (!rows || rows.length < 2) return offers;
+
+  const headers = rows[0].map(h => (h || '').trim());
+  for (let r = 1; r < rows.length; r++) {
+    const row = rows[r];
+    if (!row || row.length < 2) continue;
+
+    const obj = {};
+    headers.forEach((h, idx) => {
+      obj[h] = (row[idx] || '').trim();
+    });
+
+    const code = (obj['Offer Code'] || '').trim().toUpperCase();
+    if (!code) continue;
+
+    // Strictly require Live Status === 'Live' (case-insensitive, trimmed)
+    const liveStatus = (obj['Live Status'] || '').trim().toLowerCase();
+    if (liveStatus !== 'live') continue;
+
+    const rawType = (obj['Discount Type'] || '').trim().toLowerCase();
+    let discountType = 'flat_inr';
+    if (rawType.includes('percent') || rawType.includes('%')) {
+      discountType = 'percentage';
+    } else if (rawType.includes('free') || rawType.includes('ship')) {
+      discountType = 'free_shipping';
+    }
+
+    const discountValue = parseFloat(String(obj['Discount Value'] || '0').replace(/[^0-9.]/g, '')) || 0;
+    const minOrderValue = parseInt(String(obj['Min Order Value (INR)'] || obj['Min Order Value'] || '0').replace(/[^0-9]/g, ''), 10) || 0;
+    const appliesTo = (obj['Applies To'] || 'All Products').trim() || 'All Products';
+    const bannerTitle = (obj['Banner / Offer Title'] || obj['Offer Title'] || '').trim();
+
+    offers.set(code, {
+      code,
+      bannerTitle,
+      discountType,
+      discountValue,
+      minOrderValue,
+      appliesTo,
+      liveStatus: 'Live'
+    });
+  }
+  return offers;
+}
+
+// Update top announcement bar automatically with Live offers from Google Sheet
+function updateAnnouncementBarWithOffers() {
+  const bar = document.getElementById('liveAnnouncementBar') || document.querySelector('.announcement[data-live-offers="true"]');
+  if (!bar) return;
+
+  const offersList = Array.from(liveOffersMap.values());
+  if (offersList.length === 0) {
+    bar.innerHTML = `<span class="announcement-dot"></span><span class="announcement-offers">WATERPROOF &amp; ANTI-TARNISH JEWELLERY · FREE EXPRESS SHIPPING ABOVE ₹${FREE_SHIPPING_THRESHOLD}</span>`;
+    return;
+  }
+
+  const segments = offersList.map(offer => {
+    const title = offer.bannerTitle || `${offer.code} Offer`;
+    const alreadyHasCode = title.toUpperCase().includes(offer.code);
+    if (alreadyHasCode) {
+      return `<span>${escapeCartHtml(title)}</span>`;
+    }
+    return `<span>${escapeCartHtml(title)} · CODE: <strong>${escapeCartHtml(offer.code)}</strong></span>`;
+  });
+
+  bar.innerHTML = `<span class="announcement-dot"></span><span class="announcement-offers">${segments.join('<span class="announcement-sep" aria-hidden="true">·</span>')}</span>`;
+}
+
+// Fetch live offers CSV on page load (cached within page session, bypassed on browser reload)
+function fetchLiveOffers(forceRefresh = false) {
+  if (!forceRefresh && offersFetchPromise) {
+    return offersFetchPromise;
+  }
+
+  offersFetchPromise = (async () => {
+    try {
+      const url = `${OFFERS_SHEET_CSV_URL}&_t=${Date.now()}`;
+      const res = await fetch(url, { cache: 'no-store' });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const csvText = await res.text();
+      liveOffersMap = parseOffersFromCsv(csvText);
+      liveOffersLoaded = true;
+    } catch (err) {
+      console.error('Live Offers CSV Fetch Error:', err);
+      // Keep existing liveOffersMap if any, mark loaded so UI never hangs
+      liveOffersLoaded = true;
+    }
+
+    updateAnnouncementBarWithOffers();
+    renderCartDrawer();
+    updateCheckoutPreview();
+    renderPageCheckout();
+    return liveOffersMap;
+  })();
+
+  return offersFetchPromise;
+}
 
 function saveCart() {
   localStorage.setItem('panooja_cart', JSON.stringify(cart));
@@ -15,6 +192,8 @@ function saveCart() {
   }
   updateCartBadge();
   renderCartDrawer();
+  updateCheckoutPreview();
+  renderPageCheckout();
 }
 
 function updateCartBadge() {
@@ -25,31 +204,104 @@ function updateCartBadge() {
   });
 }
 
-// Calculate discounts based on subtotal and active promo code
-function calculateDiscount(subtotal) {
-  if (!appliedCoupon) return { code: null, amount: 0, error: null };
+// Calculate discounts based on subtotal, cart items, and live Google Sheet offers
+function calculateDiscount(subtotal, cartItems = cart) {
+  if (!appliedCoupon) {
+    return { code: null, amount: 0, isFreeShip: false, valid: false, pending: false, error: null, savingsText: '' };
+  }
   const code = appliedCoupon.toUpperCase().trim();
 
-  if (code === 'WELCOME10') {
-    if (subtotal < 500) {
-      return { code, amount: 0, error: 'WELCOME10 requires a minimum order of ₹500.' };
+  if (!liveOffersLoaded) {
+    return { code, amount: 0, isFreeShip: false, valid: false, pending: true, error: null, savingsText: '' };
+  }
+
+  const offer = liveOffersMap.get(code);
+  if (!offer) {
+    return {
+      code,
+      amount: 0,
+      isFreeShip: false,
+      valid: false,
+      pending: false,
+      error: 'This coupon code is invalid or expired.',
+      savingsText: ''
+    };
+  }
+
+  if (subtotal > 0 && offer.minOrderValue > 0 && subtotal < offer.minOrderValue) {
+    const shortfall = offer.minOrderValue - subtotal;
+    return {
+      code: offer.code,
+      offer,
+      amount: 0,
+      isFreeShip: false,
+      valid: false,
+      pending: false,
+      error: `Add ₹${shortfall.toLocaleString('en-IN')} more to use ${offer.code}`,
+      savingsText: ''
+    };
+  }
+
+  const appliesToAll = normalizeOfferCategoryGroup(offer.appliesTo) === 'all';
+  let eligibleSubtotal = subtotal;
+
+  if (!appliesToAll && subtotal > 0) {
+    eligibleSubtotal = (cartItems || []).reduce((sum, item) => {
+      if (doesCartItemMatchOfferCategory(item.category, offer.appliesTo)) {
+        return sum + ((Number(item.price) || 0) * (Number(item.quantity) || 1));
+      }
+      return sum;
+    }, 0);
+
+    if (eligibleSubtotal <= 0) {
+      return {
+        code: offer.code,
+        offer,
+        amount: 0,
+        isFreeShip: false,
+        valid: false,
+        pending: false,
+        error: `${offer.code} applies only to ${offer.appliesTo}. Add a matching item to use it.`,
+        savingsText: ''
+      };
     }
-    const discount = Math.round(subtotal * 0.10);
-    return { code, amount: discount, error: null };
   }
 
-  if (code === 'FESTIVE200') {
-    if (subtotal < 1499) {
-      return { code, amount: 0, error: 'FESTIVE200 requires a minimum order of ₹1,499.' };
+  let amount = 0;
+  let isFreeShip = false;
+
+  if (offer.discountType === 'percentage') {
+    amount = Math.min(eligibleSubtotal, Math.round(eligibleSubtotal * (offer.discountValue / 100)));
+  } else if (offer.discountType === 'free_shipping') {
+    isFreeShip = true;
+  } else {
+    amount = Math.min(eligibleSubtotal, Math.round(offer.discountValue));
+  }
+
+  let savingsText = '';
+  if (subtotal > 0) {
+    if (isFreeShip) {
+      const shippingSaved = subtotal < FREE_SHIPPING_THRESHOLD ? STANDARD_SHIPPING_FEE : 0;
+      savingsText = shippingSaved > 0
+        ? `Coupon ${offer.code} applied — You save ₹${shippingSaved} on shipping!`
+        : `Coupon ${offer.code} applied — Free Express Shipping unlocked!`;
+    } else {
+      savingsText = `Coupon ${offer.code} applied — You save ₹${amount.toLocaleString('en-IN')}`;
     }
-    return { code, amount: 200, error: null };
+  } else if (offer.bannerTitle) {
+    savingsText = `Coupon ${offer.code} saved (${offer.bannerTitle})`;
   }
 
-  if (code === 'FREESHIP') {
-    return { code, amount: 0, isFreeShip: true, error: null };
-  }
-
-  return { code, amount: 0, error: 'Invalid coupon code.' };
+  return {
+    code: offer.code,
+    offer,
+    amount,
+    isFreeShip,
+    valid: true,
+    pending: false,
+    error: null,
+    savingsText
+  };
 }
 
 // Open and Close Cart Drawer
@@ -196,10 +448,14 @@ function renderCartDrawer() {
   if (subtotalEl) subtotalEl.textContent = `₹${subtotal.toLocaleString('en-IN')}`;
 
   if (discountRow) {
-    if (discountInfo.amount > 0) {
+    if (discountInfo.valid && discountInfo.amount > 0) {
       discountRow.style.display = 'flex';
       if (discountNameEl) discountNameEl.textContent = discountInfo.code;
       if (discountValEl) discountValEl.textContent = `-₹${discountInfo.amount.toLocaleString('en-IN')}`;
+    } else if (discountInfo.valid && discountInfo.isFreeShip) {
+      discountRow.style.display = 'flex';
+      if (discountNameEl) discountNameEl.textContent = discountInfo.code;
+      if (discountValEl) discountValEl.textContent = 'FREE SHIPPING';
     } else {
       discountRow.style.display = 'none';
     }
@@ -211,17 +467,88 @@ function renderCartDrawer() {
 
   if (totalEl) totalEl.textContent = `₹${grandTotal.toLocaleString('en-IN')}`;
 
-  // Update Promo Code Tag
-  const promoTag = document.getElementById('promoAppliedTag');
-  const promoLabel = document.getElementById('promoCodeLabel');
-  if (promoTag && promoLabel) {
-    if (appliedCoupon) {
-      promoTag.style.display = 'inline-flex';
-      promoLabel.textContent = appliedCoupon;
-    } else {
-      promoTag.style.display = 'none';
+  syncAllPromoUIs(discountInfo, subtotal);
+}
+
+// Synchronize Coupon Input, Applied Tag, Remove Button, Savings Feedback & Live Hints across Drawer & Checkout
+function syncAllPromoUIs(discountInfo, subtotal) {
+  const promoContainers = [
+    {
+      tag: document.getElementById('promoAppliedTag'),
+      label: document.getElementById('promoCodeLabel'),
+      feedback: document.getElementById('promoFeedback'),
+      hint: document.getElementById('promoHint')
+    },
+    {
+      tag: document.getElementById('checkoutPromoAppliedTag'),
+      label: document.getElementById('checkoutPromoCodeLabel'),
+      feedback: document.getElementById('checkoutPromoFeedback'),
+      hint: document.getElementById('checkoutPromoHint')
+    },
+    {
+      tag: document.getElementById('pagePromoAppliedTag'),
+      label: document.getElementById('pagePromoCodeLabel'),
+      feedback: document.getElementById('pagePromoFeedback'),
+      hint: document.getElementById('pagePromoHint')
     }
+  ];
+
+  // Build concise live hint string from Google Sheet Offers
+  const liveList = Array.from(liveOffersMap.values());
+  let hintHtml = 'No active coupon codes at this time.';
+  if (!liveOffersLoaded) {
+    hintHtml = 'Loading live offers...';
+  } else if (liveList.length > 0) {
+    const parts = liveList.map(o => {
+      const desc = o.bannerTitle || (o.discountType === 'percentage' ? `${o.discountValue}% off` : o.discountType === 'free_shipping' ? 'Free shipping' : `₹${o.discountValue} off`);
+      return `<strong>${escapeCartHtml(o.code)}</strong> (${escapeCartHtml(desc)})`;
+    });
+    hintHtml = `Available offers: ${parts.join(' · ')}`;
   }
+
+  // Decide inline feedback message & style
+  let feedbackType = '';
+  let feedbackMsg = '';
+
+  if (discountInfo.error) {
+    feedbackType = 'error';
+    feedbackMsg = discountInfo.error;
+  } else if (discountInfo.valid && discountInfo.savingsText) {
+    feedbackType = 'success';
+    feedbackMsg = discountInfo.savingsText;
+  } else if (lastPromoFeedback && lastPromoFeedback.message) {
+    feedbackType = lastPromoFeedback.type;
+    feedbackMsg = lastPromoFeedback.message;
+  }
+
+  promoContainers.forEach(ui => {
+    if (ui.tag && ui.label) {
+      if (appliedCoupon && (discountInfo.valid || discountInfo.pending)) {
+        ui.tag.style.display = 'inline-flex';
+        ui.label.textContent = discountInfo.code || appliedCoupon;
+      } else if (appliedCoupon && discountInfo.error && subtotal > 0) {
+        // Show tag with Remove option so user can clear or keep adding items
+        ui.tag.style.display = 'inline-flex';
+        ui.label.textContent = discountInfo.code || appliedCoupon;
+      } else {
+        ui.tag.style.display = 'none';
+      }
+    }
+
+    if (ui.feedback) {
+      if (feedbackMsg) {
+        ui.feedback.textContent = feedbackMsg;
+        ui.feedback.className = `promo-feedback ${feedbackType === 'error' ? 'is-error' : 'is-success'}`;
+      } else {
+        ui.feedback.textContent = '';
+        ui.feedback.className = 'promo-feedback';
+      }
+    }
+
+    if (ui.hint) {
+      ui.hint.innerHTML = hintHtml;
+    }
+  });
 }
 
 // Update Checkout Modal Price Preview
@@ -244,9 +571,12 @@ function updateCheckoutPreview() {
   if (subtotalEl) subtotalEl.textContent = `₹${subtotal.toLocaleString('en-IN')}`;
 
   if (discountRow && discountEl) {
-    if (discountInfo.amount > 0) {
+    if (discountInfo.valid && discountInfo.amount > 0) {
       discountRow.style.display = 'flex';
       discountEl.textContent = `-₹${discountInfo.amount.toLocaleString('en-IN')} (${discountInfo.code})`;
+    } else if (discountInfo.valid && discountInfo.isFreeShip) {
+      discountRow.style.display = 'flex';
+      discountEl.textContent = `FREE SHIPPING (${discountInfo.code})`;
     } else {
       discountRow.style.display = 'none';
     }
@@ -254,50 +584,129 @@ function updateCheckoutPreview() {
 
   if (shippingEl) shippingEl.textContent = shippingFee === 0 ? 'FREE' : `₹${shippingFee}`;
   if (grandTotalEl) grandTotalEl.textContent = `₹${grandTotal.toLocaleString('en-IN')}`;
+
+  syncAllPromoUIs(discountInfo, subtotal);
 }
 
-// Apply Promo Code
-function applyPromoCode(code) {
-  const cleanCode = (code || '').toUpperCase().trim();
-  if (!cleanCode) return;
+// Update Standalone checkout.html Summary
+function renderPageCheckout() {
+  const pageTotalEl = document.getElementById('pageCheckoutTotal');
+  const pageSubtotalEl = document.getElementById('pageCheckoutSubtotal');
+  const pageDiscountRow = document.getElementById('pageCheckoutDiscountRow');
+  const pageDiscountEl = document.getElementById('pageCheckoutDiscount');
+  const pageShippingEl = document.getElementById('pageCheckoutShipping');
+
+  if (!pageTotalEl && !pageSubtotalEl) return;
 
   const subtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+  const discountInfo = calculateDiscount(subtotal);
+  const isFreeShipping = subtotal >= FREE_SHIPPING_THRESHOLD || discountInfo.isFreeShip;
+  const shippingFee = (subtotal === 0 || isFreeShipping) ? 0 : STANDARD_SHIPPING_FEE;
+  const grandTotal = Math.max(0, subtotal - discountInfo.amount + shippingFee);
 
-  if (cleanCode === 'WELCOME10') {
-    if (subtotal > 0 && subtotal < 500) {
-      alert('Code WELCOME10 requires a minimum order value of ₹500.');
-      return;
+  if (pageSubtotalEl) pageSubtotalEl.textContent = `₹${subtotal.toLocaleString('en-IN')}`;
+  if (pageDiscountRow && pageDiscountEl) {
+    if (discountInfo.valid && discountInfo.amount > 0) {
+      pageDiscountRow.style.display = 'flex';
+      pageDiscountEl.textContent = `-₹${discountInfo.amount.toLocaleString('en-IN')} (${discountInfo.code})`;
+    } else if (discountInfo.valid && discountInfo.isFreeShip) {
+      pageDiscountRow.style.display = 'flex';
+      pageDiscountEl.textContent = `FREE SHIPPING (${discountInfo.code})`;
+    } else {
+      pageDiscountRow.style.display = 'none';
     }
-    appliedCoupon = 'WELCOME10';
-  } else if (cleanCode === 'FESTIVE200') {
-    if (subtotal > 0 && subtotal < 1499) {
-      alert('Code FESTIVE200 requires a minimum order value of ₹1,499.');
-      return;
+  }
+  if (pageShippingEl) pageShippingEl.textContent = shippingFee === 0 ? 'FREE' : `₹${shippingFee}`;
+  if (pageTotalEl) pageTotalEl.textContent = `₹${grandTotal.toLocaleString('en-IN')}`;
+
+  syncAllPromoUIs(discountInfo, subtotal);
+}
+
+// Apply Promo Code against Live Google Sheet Offers
+async function applyPromoCode(code, fromUserInput = false) {
+  const cleanCode = (code || '').toUpperCase().trim();
+  if (!cleanCode) {
+    if (fromUserInput) {
+      lastPromoFeedback = { type: 'error', message: 'Please enter a coupon code.' };
+      syncAllPromoUIs(calculateDiscount(cart.reduce((s, i) => s + i.price * i.quantity, 0)), cart.reduce((s, i) => s + i.price * i.quantity, 0));
     }
-    appliedCoupon = 'FESTIVE200';
-  } else if (cleanCode === 'FREESHIP') {
-    appliedCoupon = 'FREESHIP';
-  } else {
-    alert(`Coupon "${cleanCode}" is not recognized. Please use WELCOME10 or FESTIVE200.`);
-    return;
+    return { ok: false };
   }
 
+  if (!liveOffersLoaded) {
+    await fetchLiveOffers();
+  }
+
+  const offer = liveOffersMap.get(cleanCode);
+  const subtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+
+  if (!offer) {
+    lastPromoFeedback = { type: 'error', message: 'This coupon code is invalid or expired.' };
+    if (fromUserInput && appliedCoupon === cleanCode) {
+      appliedCoupon = null;
+    }
+    saveCart();
+    return { ok: false, error: lastPromoFeedback.message };
+  }
+
+  if (subtotal > 0 && offer.minOrderValue > 0 && subtotal < offer.minOrderValue) {
+    const shortfall = offer.minOrderValue - subtotal;
+    const msg = `Add ₹${shortfall.toLocaleString('en-IN')} more to use ${offer.code}`;
+    lastPromoFeedback = { type: 'error', message: msg };
+    // Save code if triggered programmatically (e.g. newsletter), or reject cleanly if entered manually
+    if (!fromUserInput) {
+      appliedCoupon = offer.code;
+    } else {
+      appliedCoupon = null;
+    }
+    saveCart();
+    return { ok: false, error: msg };
+  }
+
+  // Check category eligibility if cart has items
+  if (subtotal > 0 && normalizeOfferCategoryGroup(offer.appliesTo) !== 'all') {
+    const matchingTotal = cart.reduce((sum, item) => {
+      return doesCartItemMatchOfferCategory(item.category, offer.appliesTo)
+        ? sum + ((Number(item.price) || 0) * (Number(item.quantity) || 1))
+        : sum;
+    }, 0);
+
+    if (matchingTotal <= 0) {
+      const msg = `${offer.code} applies only to ${offer.appliesTo}. Add a matching item to use it.`;
+      lastPromoFeedback = { type: 'error', message: msg };
+      if (fromUserInput) appliedCoupon = null;
+      saveCart();
+      return { ok: false, error: msg };
+    }
+  }
+
+  appliedCoupon = offer.code;
+  const info = calculateDiscount(subtotal);
+  lastPromoFeedback = {
+    type: 'success',
+    message: info.savingsText || `Coupon ${offer.code} applied!`
+  };
+
   saveCart();
-  const promoInput = document.getElementById('promoInput');
-  if (promoInput) promoInput.value = '';
+  ['promoInput', 'checkoutPromoInput', 'pagePromoInput'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+  return { ok: true, offer };
 }
 
 function removePromoCode() {
   appliedCoupon = null;
+  lastPromoFeedback = { type: '', message: '' };
   saveCart();
 }
 
 // Generate formatted WhatsApp Order Text and Redirect
-function orderViaWhatsApp() {
-  const nameInput = document.getElementById('checkoutName');
-  const phoneInput = document.getElementById('checkoutPhone');
-  const addressInput = document.getElementById('checkoutAddress');
-  const pincodeInput = document.getElementById('checkoutPincode');
+function orderViaWhatsApp(isPageCheckout = false) {
+  const nameInput = document.getElementById(isPageCheckout ? 'pageCheckoutName' : 'checkoutName');
+  const phoneInput = document.getElementById(isPageCheckout ? 'pageCheckoutPhone' : 'checkoutPhone');
+  const addressInput = document.getElementById(isPageCheckout ? 'pageCheckoutAddress' : 'checkoutAddress');
+  const pincodeInput = document.getElementById(isPageCheckout ? 'pageCheckoutPincode' : 'checkoutPincode');
 
   const name = nameInput ? nameInput.value.trim() : '';
   const phone = phoneInput ? phoneInput.value.trim() : '';
@@ -349,6 +758,12 @@ function orderViaWhatsApp() {
 
   const panoojaUser = (typeof window.panoojaAuth !== 'undefined') ? window.panoojaAuth.getUser() : null;
   const emailLine = (panoojaUser && panoojaUser.email) ? `• Client Email: ${panoojaUser.email}\n` : '';
+  let discountLine = '';
+  if (discountInfo.valid && discountInfo.amount > 0) {
+    discountLine = `• Discount (${discountInfo.code}): -₹${discountInfo.amount.toLocaleString('en-IN')}\n`;
+  } else if (discountInfo.valid && discountInfo.isFreeShip) {
+    discountLine = `• Coupon Applied (${discountInfo.code}): Free Express Shipping\n`;
+  }
 
   const message = `✨ *PANOOJA ORDER INQUIRY* ✨
 Reference: #${inquiryRef}
@@ -363,7 +778,7 @@ ${emailLine}• Delivery Address: ${address}
 ${itemsListText}
 💰 *Estimated Payable:*
 • Subtotal: ₹${subtotal.toLocaleString('en-IN')}
-${discountInfo.amount > 0 ? `• Discount (${discountInfo.code}): -₹${discountInfo.amount.toLocaleString('en-IN')}\n` : ''}• Pan-India Express Delivery: ${shippingFee === 0 ? 'FREE' : '₹' + shippingFee}
+${discountLine}• Pan-India Express Delivery: ${shippingFee === 0 ? 'FREE' : '₹' + shippingFee}
 • *Total Amount: ₹${grandTotal.toLocaleString('en-IN')}*
 
 Please confirm availability and share payment / UPI QR details!`;
@@ -378,7 +793,7 @@ Please confirm availability and share payment / UPI QR details!`;
       body: JSON.stringify({
         receipt: inquiryRef,
         items: cart.map(item => ({ sku: item.sku || item.id, quantity: item.quantity })),
-        promo_code: appliedCoupon ? appliedCoupon.code : '',
+        promo_code: discountInfo.valid ? discountInfo.code : '',
         customer_name: name,
         customer_phone: cleanPhone,
         customer_email: (panoojaUser && panoojaUser.email) ? panoojaUser.email : '',
@@ -390,14 +805,12 @@ Please confirm availability and share payment / UPI QR details!`;
   // Open WhatsApp in new tab safely
   const waWindow = window.open(waUrl, '_blank');
   if (!waWindow || waWindow.closed || typeof waWindow.closed === 'undefined') {
-    // Popup was blocked by browser
     alert('Popup was blocked by your browser. We will open WhatsApp directly.');
     window.location.href = waUrl;
     return;
   }
 
-  // Preserve cart until customer confirms order with stylist
-  closeCheckoutModal();
+  if (!isPageCheckout) closeCheckoutModal();
   alert(`Your order summary has been transferred to WhatsApp!\n\nReference: #${inquiryRef}\nYour shopping bag remains saved on this device.`);
 }
 
@@ -491,7 +904,7 @@ async function payWithRazorpay(isPageCheckout = false) {
           sku: item.sku || item.id,
           quantity: item.quantity
         })),
-        promo_code: appliedCoupon ? appliedCoupon.code : '',
+        promo_code: discountInfo.valid ? discountInfo.code : '',
         currency: 'INR',
         receipt: `rcpt_${Date.now()}`,
         customer_name: name,
@@ -691,6 +1104,7 @@ function showPaymentSuccessDialog(details) {
 document.addEventListener('DOMContentLoaded', () => {
   updateCartBadge();
   renderCartDrawer();
+  fetchLiveOffers();
 
   // Header Nav Cart Click -> Open Slide-out Drawer
   const navCartBtn = document.getElementById('navCart');
@@ -751,25 +1165,29 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // Promo Code Box Listeners
-  const applyPromoBtn = document.getElementById('applyPromoBtn');
-  const promoInput = document.getElementById('promoInput');
-  if (applyPromoBtn && promoInput) {
-    applyPromoBtn.addEventListener('click', () => {
-      applyPromoCode(promoInput.value);
-    });
-    promoInput.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') {
-        e.preventDefault();
-        applyPromoCode(promoInput.value);
-      }
-    });
-  }
+  // Promo Code Box Listeners (Cart Drawer, Checkout Modal, and checkout.html)
+  const bindPromoControl = (inputId, applyId, removeId) => {
+    const input = document.getElementById(inputId);
+    const applyBtn = document.getElementById(applyId);
+    const removeBtn = document.getElementById(removeId);
 
-  const removePromoBtn = document.getElementById('removePromoBtn');
-  if (removePromoBtn) {
-    removePromoBtn.addEventListener('click', removePromoCode);
-  }
+    if (applyBtn && input) {
+      applyBtn.addEventListener('click', () => applyPromoCode(input.value, true));
+      input.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          applyPromoCode(input.value, true);
+        }
+      });
+    }
+    if (removeBtn) {
+      removeBtn.addEventListener('click', removePromoCode);
+    }
+  };
+
+  bindPromoControl('promoInput', 'applyPromoBtn', 'removePromoBtn');
+  bindPromoControl('checkoutPromoInput', 'checkoutApplyPromoBtn', 'checkoutRemovePromoBtn');
+  bindPromoControl('pagePromoInput', 'pageApplyPromoBtn', 'pageRemovePromoBtn');
 
   // Open Checkout Modal from Drawer
   const openCheckoutBtn = document.getElementById('openCheckoutModalBtn');
@@ -790,7 +1208,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // Checkout Actions: WhatsApp & Online
   const checkoutWhatsappBtn = document.getElementById('checkoutWhatsappBtn');
   if (checkoutWhatsappBtn) {
-    checkoutWhatsappBtn.addEventListener('click', orderViaWhatsApp);
+    checkoutWhatsappBtn.addEventListener('click', () => orderViaWhatsApp(false));
   }
   const checkoutOnlineBtn = document.getElementById('checkoutOnlineBtn');
   if (checkoutOnlineBtn) {
@@ -890,3 +1308,8 @@ window.payOnlineCashfree = payWithRazorpay; // Backward compatibility alias
 window.openCartDrawer = openCartDrawer;
 window.closeCartDrawer = closeCartDrawer;
 window.addToCart = addToCart;
+window.orderViaWhatsApp = orderViaWhatsApp;
+window.renderPageCheckout = renderPageCheckout;
+window.applyPromoCode = applyPromoCode;
+window.removePromoCode = removePromoCode;
+window.calculateDiscount = calculateDiscount;

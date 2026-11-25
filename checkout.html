@@ -21,8 +21,9 @@
   <script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
 <body>
-  <div class="announcement">
-    <span class="announcement-dot"></span> FREE SHIPPING ABOVE ₹799 · USE CODE WELCOME10 FOR 10% OFF YOUR FIRST ORDER
+  <div class="announcement" id="liveAnnouncementBar" data-live-offers="true">
+    <span class="announcement-dot"></span>
+    <span class="announcement-offers">FREE SHIPPING ABOVE ₹799 · USE CODE <strong>WELCOME10</strong> FOR 10% OFF YOUR FIRST ORDER</span>
   </div>
 
   <header class="site-header" id="top">
@@ -91,12 +92,38 @@
             <input type="text" id="pageCheckoutPincode" name="pincode" placeholder="6-digit pincode" pattern="[0-9]{6}" required>
           </div>
           
-          <div style="margin-top: 16px; padding: 16px; background: var(--soft-cool-white); border-radius: var(--radius-sm); border: 1px solid var(--light-grey);">
-            <div style="display: flex; justify-content: space-between; font-weight: 700; font-size: 1.25rem; color: var(--black);">
+          <!-- Standalone Checkout Coupon Code Box -->
+          <div class="promo-box checkout-promo-box" style="margin-top: 8px; margin-bottom: 4px;">
+            <div class="promo-input-row">
+              <input type="text" id="pagePromoInput" placeholder="Apply Coupon Code" aria-label="Apply Coupon Code" autocomplete="off" />
+              <button type="button" id="pageApplyPromoBtn" class="button button-secondary">Apply</button>
+            </div>
+            <div class="promo-applied-tag" id="pagePromoAppliedTag" style="display: none;">
+              <span class="promo-code-name" id="pagePromoCodeLabel">WELCOME10</span>
+              <button type="button" id="pageRemovePromoBtn" class="promo-remove-btn" aria-label="Remove coupon code">Remove</button>
+            </div>
+            <div class="promo-feedback" id="pagePromoFeedback" role="status" aria-live="polite"></div>
+            <div class="promo-hint" id="pagePromoHint">Have a festive or welcome coupon? Apply it above.</div>
+          </div>
+
+          <div style="margin-top: 12px; padding: 16px; background: var(--soft-cool-white); border-radius: var(--radius-sm); border: 1px solid var(--light-grey); display: flex; flex-direction: column; gap: 8px;">
+            <div style="display: flex; justify-content: space-between; font-size: 0.92rem; color: var(--charcoal);">
+              <span>Subtotal:</span>
+              <span id="pageCheckoutSubtotal">₹0</span>
+            </div>
+            <div id="pageCheckoutDiscountRow" style="display: none; justify-content: space-between; font-size: 0.92rem; color: var(--royal-blue); font-weight: 600;">
+              <span>Discount Applied:</span>
+              <span id="pageCheckoutDiscount">-₹0</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; font-size: 0.92rem; color: var(--charcoal);">
+              <span>Express Shipping:</span>
+              <span id="pageCheckoutShipping">FREE</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; font-weight: 700; font-size: 1.25rem; color: var(--black); border-top: 1px solid var(--light-grey); padding-top: 8px; margin-top: 4px;">
               <span>Total Payable:</span>
               <span id="pageCheckoutTotal">₹0</span>
             </div>
-            <p style="font-size: 0.78rem; color: var(--muted); margin: 6px 0 0;">Includes taxes &amp; Free Express pan-India delivery (orders ₹799+).</p>
+            <p style="font-size: 0.78rem; color: var(--muted); margin: 4px 0 0;">Includes taxes &amp; Free Express pan-India delivery (orders ₹799+).</p>
           </div>
           
           <div style="display: flex; flex-direction: column; gap: 10px; margin-top: 12px;">
@@ -137,63 +164,21 @@
     <p class="copyright">© <span id="year"></span> PANOOJA. All rights reserved.</p>
   </footer>
 
-  <script src="cart.js?v=6"></script>
+  <script src="cart.js?v=8"></script>
   <script src="script.js?v=8"></script>
   <script>
-    // Wire up page-level checkout form
+    // Wire up page-level checkout form using shared cart.js coupon & pricing engine
     document.addEventListener('DOMContentLoaded', () => {
-      const pageTotalEl = document.getElementById('pageCheckoutTotal');
-      const subtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-      const discountInfo = calculateDiscount(subtotal);
-      const isFreeShipping = subtotal >= 799 || discountInfo.isFreeShip;
-      const shippingFee = (subtotal === 0 || isFreeShipping) ? 0 : 79;
-      const grandTotal = Math.max(0, subtotal - discountInfo.amount + shippingFee);
-      if (pageTotalEl) pageTotalEl.textContent = '₹' + grandTotal.toLocaleString('en-IN');
+      if (typeof window.renderPageCheckout === 'function') {
+        window.renderPageCheckout();
+      }
 
       const waBtn = document.getElementById('pageCheckoutWhatsappBtn');
       if (waBtn) {
         waBtn.addEventListener('click', () => {
-          const name = document.getElementById('pageCheckoutName').value.trim();
-          const phone = document.getElementById('pageCheckoutPhone').value.trim();
-          const address = document.getElementById('pageCheckoutAddress').value.trim();
-          const pincode = document.getElementById('pageCheckoutPincode').value.trim();
-
-          if (!name || !address) {
-            alert('Please enter your full name and delivery address.');
-            return;
+          if (typeof window.orderViaWhatsApp === 'function') {
+            window.orderViaWhatsApp(true);
           }
-
-          const cleanPhone = phone.replace(/[^0-9]/g, '');
-          if (!/^[6-9]\d{9}$/.test(cleanPhone)) {
-            alert('Please enter a valid 10-digit Indian WhatsApp mobile number.');
-            return;
-          }
-
-          const cleanPincode = pincode.replace(/[^0-9]/g, '');
-          if (!/^[1-9]\d{5}$/.test(cleanPincode)) {
-            alert('Please enter a valid 6-digit Indian delivery PIN code.');
-            return;
-          }
-
-          if (cart.length === 0) {
-            alert('Your bag is empty.');
-            return;
-          }
-
-          const inquiryRef = 'INQ-' + Date.now().toString(36).toUpperCase() + '-' + Math.floor(100 + Math.random() * 900);
-          let itemsListText = '';
-          cart.forEach((item, index) => {
-            itemsListText += `${index + 1}. *${item.title}* x ${item.quantity} - ₹${(item.price * item.quantity).toLocaleString('en-IN')}\n`;
-          });
-
-          const msg = `✨ *PANOOJA ORDER INQUIRY* ✨\nReference: #${inquiryRef}\n\n👤 *Customer Details:*\n• Name: ${name}\n• Phone: +91 ${cleanPhone}\n• Address: ${address}\n• PIN Code: ${cleanPincode}\n\n🛍️ *Items in Bag:*\n${itemsListText}\n💰 *Total Payable: ₹${grandTotal.toLocaleString('en-IN')}*\n\nPlease confirm availability!`;
-          const waUrl = `https://wa.me/919876543210?text=${encodeURIComponent(msg)}`;
-          const waWin = window.open(waUrl, '_blank');
-          if (!waWin || waWin.closed || typeof waWin.closed === 'undefined') {
-            window.location.href = waUrl;
-            return;
-          }
-          alert(`Your order inquiry has been transferred to WhatsApp!\nReference: #${inquiryRef}\nYour shopping bag remains saved.`);
         });
       }
 

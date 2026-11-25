@@ -2,14 +2,46 @@
 import https from 'https';
 
 const GOOGLE_SHEETS_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQ1yF6fF2S8x5dH3u24uH2DNt8WOl9xZ_UTLA6JNmAWbn1XUroDBjS6M-GPXlSHLLtkSaXTllKNQz-n/pub?gid=0&single=true&output=csv';
+const OFFERS_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQ1yF6fF2S8x5dH3u24uH2DNt8WOl9xZ_UTLA6JNmAWbn1XUroDBjS6M-GPXlSHLLtkSaXTllKNQz-n/pub?gid=2&single=true&output=csv';
 
 const STANDARD_SHIPPING_FEE = 79;
 const FREE_SHIPPING_THRESHOLD = 799;
 
-// In-memory catalog cache with 60-second TTL
+// In-memory catalog & offers caches with 60-second TTL
 let cachedCatalog = null;
 let lastCacheTime = 0;
+let cachedOffers = null;
+let lastOffersCacheTime = 0;
 const CACHE_TTL_MS = 60 * 1000;
+
+/**
+ * Fetch CSV text from Google Sheets, following redirects safely.
+ */
+function fetchCsvText(url, redirectDepth = 0) {
+  return new Promise((resolve, reject) => {
+    if (redirectDepth > 5) {
+      return reject(new Error('Too many redirects while fetching CSV'));
+    }
+    const request = https.get(url, (response) => {
+      if (response.statusCode >= 300 && response.statusCode < 400 && response.headers.location) {
+        response.resume();
+        return fetchCsvText(response.headers.location, redirectDepth + 1).then(resolve, reject);
+      }
+      if (response.statusCode !== 200) {
+        response.resume();
+        return reject(new Error(`Failed to fetch CSV: HTTP ${response.statusCode}`));
+      }
+      let data = '';
+      response.on('data', chunk => { data += chunk; });
+      response.on('end', () => resolve(data));
+    });
+    request.on('error', reject);
+    request.setTimeout(10000, () => {
+      request.destroy();
+      reject(new Error('CSV fetch timeout'));
+    });
+  });
+}
 
 // Safe CSV parser handling quotes, commas, escaped quotes and multi-line fields
 export function parseCSV(text) {
@@ -66,34 +98,7 @@ export async function fetchCatalog(forceRefresh = false) {
   }
 
   try {
-    const csvData = await new Promise((resolve, reject) => {
-      const request = https.get(GOOGLE_SHEETS_CSV_URL, (response) => {
-        if (response.statusCode >= 300 && response.statusCode < 400 && response.headers.location) {
-          // Follow redirect
-          https.get(response.headers.location, (redirectRes) => {
-            let data = '';
-            redirectRes.on('data', chunk => data += chunk);
-            redirectRes.on('end', () => resolve(data));
-          }).on('error', reject);
-          return;
-        }
-
-        if (response.statusCode !== 200) {
-          reject(new Error(`Failed to fetch catalog: HTTP ${response.statusCode}`));
-          return;
-        }
-
-        let data = '';
-        response.on('data', chunk => data += chunk);
-        response.on('end', () => resolve(data));
-      });
-
-      request.on('error', reject);
-      request.setTimeout(10000, () => {
-        request.destroy();
-        reject(new Error('Catalog fetch timeout'));
-      });
-    });
+    const csvData = await fetchCsvText(GOOGLE_SHEETS_CSV_URL);
 
     const rows = parseCSV(csvData);
     if (!rows || rows.length < 2) {
@@ -250,37 +255,28 @@ export async function calculateOrderTotal(items, promoCode = '') {
     });
   }
 
-  // Validate Promo Code Server-Side
+  // Validate Promo Code Server-Side against Live Google Sheet Offers
   let discount = 0;
-  let normalizedPromo = (promoCode || '').toUpperCase().trim();
+  const normalizedPromo = (promoCode || '').toUpperCase().trim();
   let validPromoApplied = '';
   let isFreeShippingPromo = false;
 
   if (normalizedPromo) {
-    if (normalizedPromo === 'WELCOME10') {
-      if (subtotal >= 500) {
-        discount = Math.round(subtotal * 0.10);
-        validPromoApplied = 'WELCOME10 (10% OFF)';
-      } else {
-        return { ok: false, error: 'Promo code WELCOME10 requires a minimum order value of ₹500.' };
-      }
-    } else if (normalizedPromo === 'FESTIVE200') {
-      if (subtotal >= 1499) {
-        discount = 200;
-        validPromoApplied = 'FESTIVE200 (₹200 OFF)';
-      } else {
-        return { ok: false, error: 'Promo code FESTIVE200 requires a minimum order value of ₹1,499.' };
-      }
-    } else if (normalizedPromo === 'FREESHIP') {
-      if (subtotal >= 799) {
-        isFreeShippingPromo = true;
-        validPromoApplied = 'FREESHIP (FREE SHIPPING)';
-      } else {
-        return { ok: false, error: 'Promo code FREESHIP requires a minimum order value of ₹799.' };
-      }
-    } else {
-      return { ok: false, error: `Promo code "${normalizedPromo}" is invalid or expired.` };
+    const offersMap = await fetchOffers();
+    const offer = offersMap.get(normalizedPromo);
+
+    if (!offer) {
+      return { ok: false, error: 'This coupon code is invalid or expired.' };
     }
+
+    const evalResult = evaluateCouponOffer(offer, subtotal, verifiedItems);
+    if (!evalResult.ok) {
+      return { ok: false, error: evalResult.error };
+    }
+
+    discount = evalResult.discount;
+    isFreeShippingPromo = evalResult.isFreeShip;
+    validPromoApplied = evalResult.label;
   }
 
   // Calculate Shipping
@@ -305,6 +301,169 @@ export async function calculateOrderTotal(items, promoCode = '') {
     amountInPaise,
     currency: 'INR',
     items: verifiedItems
+  };
+}
+
+function normalizeCategoryGroup(cat) {
+  const c = String(cat || '').trim().toLowerCase();
+  if (!c || c === 'all' || c === 'all products') return 'all';
+  if (c.includes('earring')) return 'earrings';
+  if (c.includes('ring')) return 'rings';
+  if (c.includes('pendant') || c.includes('chain') || c.includes('necklace')) return 'pendants';
+  if (c.includes('kada') || c.includes('bracelet') || c.includes('bangle')) return 'bracelets';
+  return c;
+}
+
+function doesCategoryMatch(itemCategory, appliesTo) {
+  const parts = String(appliesTo || '').split(',').map(p => p.trim()).filter(Boolean);
+  if (parts.length === 0) return true;
+  const rawItem = String(itemCategory || '').trim().toLowerCase();
+  const itemGroup = normalizeCategoryGroup(itemCategory);
+  return parts.some(part => {
+    const partGroup = normalizeCategoryGroup(part);
+    if (partGroup === 'all') return true;
+    return rawItem === part.toLowerCase() || itemGroup === partGroup;
+  });
+}
+
+/**
+ * Parse live offers from Offers CSV text. Only rows with Live Status === 'Live' (case-insensitive) are accepted.
+ */
+export function parseOffersFromCSV(csvData) {
+  const rows = parseCSV(csvData);
+  const offersMap = new Map();
+  if (!rows || rows.length < 2) return offersMap;
+
+  const headers = rows[0].map(h => (h || '').trim());
+  for (let r = 1; r < rows.length; r++) {
+    const row = rows[r];
+    if (!row || row.length < 2) continue;
+
+    const obj = {};
+    headers.forEach((h, idx) => {
+      obj[h] = (row[idx] || '').trim();
+    });
+
+    const code = (obj['Offer Code'] || '').trim().toUpperCase();
+    if (!code) continue;
+
+    const liveStatus = (obj['Live Status'] || '').trim().toLowerCase();
+    if (liveStatus !== 'live') continue;
+
+    const rawType = (obj['Discount Type'] || '').trim().toLowerCase();
+    let discountType = 'flat_inr';
+    if (rawType.includes('percent') || rawType.includes('%')) {
+      discountType = 'percentage';
+    } else if (rawType.includes('free') || rawType.includes('ship')) {
+      discountType = 'free_shipping';
+    }
+
+    const discountValue = parseFloat(String(obj['Discount Value'] || '0').replace(/[^0-9.]/g, '')) || 0;
+    const minOrderValue = parseInt(String(obj['Min Order Value (INR)'] || obj['Min Order Value'] || '0').replace(/[^0-9]/g, ''), 10) || 0;
+    const appliesTo = (obj['Applies To'] || 'All Products').trim() || 'All Products';
+    const bannerTitle = (obj['Banner / Offer Title'] || obj['Offer Title'] || '').trim();
+
+    offersMap.set(code, {
+      code,
+      bannerTitle,
+      discountType,
+      discountValue,
+      minOrderValue,
+      appliesTo,
+      liveStatus: 'Live'
+    });
+  }
+
+  return offersMap;
+}
+
+/**
+ * Fetch live offers from Google Sheets Offers tab (gid=2) with 60-second memory cache.
+ */
+export async function fetchOffers(forceRefresh = false) {
+  const now = Date.now();
+  if (!forceRefresh && cachedOffers && (now - lastOffersCacheTime < CACHE_TTL_MS)) {
+    return cachedOffers;
+  }
+
+  try {
+    const csvData = await fetchCsvText(OFFERS_CSV_URL);
+    const offersMap = parseOffersFromCSV(csvData);
+    cachedOffers = offersMap;
+    lastOffersCacheTime = now;
+    return offersMap;
+  } catch (err) {
+    console.error('Error fetching live offers from Google Sheets:', err.message);
+    if (cachedOffers) {
+      console.warn('Returning stale cached offers due to fetch error');
+      return cachedOffers;
+    }
+    return new Map();
+  }
+}
+
+/**
+ * Evaluate a parsed offer against cart subtotal and line items.
+ */
+export function evaluateCouponOffer(offer, subtotal, items = []) {
+  if (!offer) {
+    return { ok: false, discount: 0, isFreeShip: false, error: 'This coupon code is invalid or expired.' };
+  }
+
+  if (offer.minOrderValue > 0 && subtotal < offer.minOrderValue) {
+    const shortfall = offer.minOrderValue - subtotal;
+    return {
+      ok: false,
+      discount: 0,
+      isFreeShip: false,
+      error: `Add ₹${shortfall.toLocaleString('en-IN')} more to use ${offer.code}`
+    };
+  }
+
+  const appliesToAll = normalizeCategoryGroup(offer.appliesTo) === 'all';
+  let eligibleSubtotal = subtotal;
+
+  if (!appliesToAll) {
+    eligibleSubtotal = items.reduce((sum, item) => {
+      if (doesCategoryMatch(item.category, offer.appliesTo)) {
+        const lineTotal = typeof item.itemTotal === 'number'
+          ? item.itemTotal
+          : ((Number(item.price) || Number(item.unitPrice) || 0) * (Number(item.quantity) || 1));
+        return sum + lineTotal;
+      }
+      return sum;
+    }, 0);
+
+    if (eligibleSubtotal <= 0) {
+      return {
+        ok: false,
+        discount: 0,
+        isFreeShip: false,
+        error: `${offer.code} applies only to ${offer.appliesTo}. Add a matching item to use it.`
+      };
+    }
+  }
+
+  let discount = 0;
+  let isFreeShip = false;
+  let label = offer.code;
+
+  if (offer.discountType === 'percentage') {
+    discount = Math.min(eligibleSubtotal, Math.round(eligibleSubtotal * (offer.discountValue / 100)));
+    label = `${offer.code} (${offer.discountValue}% OFF)`;
+  } else if (offer.discountType === 'free_shipping') {
+    isFreeShip = true;
+    label = `${offer.code} (FREE SHIPPING)`;
+  } else {
+    discount = Math.min(eligibleSubtotal, Math.round(offer.discountValue));
+    label = `${offer.code} (₹${Math.round(offer.discountValue)} OFF)`;
+  }
+
+  return {
+    ok: true,
+    discount,
+    isFreeShip,
+    label
   };
 }
 

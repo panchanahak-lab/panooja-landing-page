@@ -70,8 +70,9 @@
 </head>
 <body>
   <!-- Top Announcement Bar -->
-  <div class="announcement">
-    <span class="announcement-dot"></span> FREE SHIPPING ABOVE ₹799 · USE CODE WELCOME10 FOR 10% OFF YOUR FIRST ORDER
+  <div class="announcement" id="liveAnnouncementBar" data-live-offers="true">
+    <span class="announcement-dot"></span>
+    <span class="announcement-offers">FREE SHIPPING ABOVE ₹799 · USE CODE <strong>WELCOME10</strong> FOR 10% OFF YOUR FIRST ORDER</span>
   </div>
 
   <!-- Header -->
@@ -418,13 +419,14 @@
       <!-- Promo Code Box -->
       <div class="promo-box">
         <div class="promo-input-row">
-          <input type="text" id="promoInput" placeholder="Promo code (e.g. WELCOME10)" autocomplete="off" />
+          <input type="text" id="promoInput" placeholder="Apply Coupon Code" aria-label="Apply Coupon Code" autocomplete="off" />
           <button type="button" id="applyPromoBtn" class="button button-secondary">Apply</button>
         </div>
         <div class="promo-applied-tag" id="promoAppliedTag" style="display: none;">
           <span class="promo-code-name" id="promoCodeLabel">WELCOME10</span>
-          <button type="button" id="removePromoBtn" class="promo-remove-btn" aria-label="Remove promo code">&times;</button>
+          <button type="button" id="removePromoBtn" class="promo-remove-btn" aria-label="Remove coupon code">Remove</button>
         </div>
+        <div class="promo-feedback" id="promoFeedback" role="status" aria-live="polite"></div>
         <div class="promo-hint" id="promoHint">Use <strong>WELCOME10</strong> (10% off &gt; ₹500) or <strong>FESTIVE200</strong> (₹200 off &gt; ₹1499)</div>
       </div>
 
@@ -488,6 +490,20 @@
       <div class="form-group">
         <label for="checkoutPincode">Pincode *</label>
         <input type="text" id="checkoutPincode" required placeholder="6-digit pincode" pattern="[0-9]{6}" autocomplete="postal-code" />
+      </div>
+
+      <!-- Checkout Coupon Code Box -->
+      <div class="promo-box checkout-promo-box">
+        <div class="promo-input-row">
+          <input type="text" id="checkoutPromoInput" placeholder="Apply Coupon Code" aria-label="Apply Coupon Code" autocomplete="off" />
+          <button type="button" id="checkoutApplyPromoBtn" class="button button-secondary">Apply</button>
+        </div>
+        <div class="promo-applied-tag" id="checkoutPromoAppliedTag" style="display: none;">
+          <span class="promo-code-name" id="checkoutPromoCodeLabel">WELCOME10</span>
+          <button type="button" id="checkoutRemovePromoBtn" class="promo-remove-btn" aria-label="Remove coupon code">Remove</button>
+        </div>
+        <div class="promo-feedback" id="checkoutPromoFeedback" role="status" aria-live="polite"></div>
+        <div class="promo-hint" id="checkoutPromoHint">Have a festive or welcome coupon? Apply it above.</div>
       </div>
 
       <!-- Mini Order Review -->
@@ -612,7 +628,7 @@
 
   <!-- Scripts -->
   <script src="auth.js?v=1"></script>
-  <script src="cart.js?v=7"></script>
+  <script src="cart.js?v=8"></script>
   <script src="script.js?v=8"></script>
 </body>
 </html>

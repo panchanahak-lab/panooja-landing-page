@@ -55,7 +55,7 @@ img { max-width: 100%; height: auto; display: block; }
   color: var(--white);
   text-align: center;
   font-size: 0.74rem;
-  letter-spacing: 0.16em;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
   padding: 11px 20px;
   font-weight: 500;
@@ -63,10 +63,24 @@ img { max-width: 100%; height: auto; display: block; }
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 10px;
+  flex-wrap: wrap;
+  gap: 8px 10px;
+  line-height: 1.45;
+}
+.announcement-offers {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+}
+.announcement-sep {
+  color: var(--royal-blue);
+  font-weight: 700;
 }
 .announcement-dot {
   display: inline-block;
+  flex-shrink: 0;
   width: 6px;
   height: 6px;
   border-radius: 50%;
@@ -1656,10 +1670,42 @@ body.checkout-modal-open {
 .promo-remove-btn {
   background: transparent;
   border: 0;
-  font-size: 1rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
   cursor: pointer;
-  color: var(--royal-blue);
-  line-height: 1;
+  color: #DC2626;
+  line-height: 1.2;
+  padding: 2px 4px;
+}
+.promo-remove-btn:hover {
+  text-decoration: underline;
+}
+.promo-feedback {
+  font-size: 0.78rem;
+  margin-top: 8px;
+  line-height: 1.4;
+  font-weight: 500;
+  display: none;
+}
+.promo-feedback.is-success {
+  display: block;
+  color: #059669;
+}
+.promo-feedback.is-error {
+  display: block;
+  color: #DC2626;
+}
+.checkout-promo-box {
+  padding: 14px;
+  background: var(--soft-cool-white);
+  border: 1px solid var(--light-grey);
+  border-radius: var(--radius-sm);
+  margin-bottom: 14px;
+}
+.checkout-promo-box .promo-input-row input {
+  background: var(--white);
 }
 .promo-hint {
   font-size: 0.72rem;
