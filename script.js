@@ -113,22 +113,43 @@ if (newsletterForm) {
 
       const data = await res.json().catch(() => ({}));
 
-      // Phase 5 Requirement: Only reveal coupon on server-confirmed success
+      // Reveal featured public coupon ONLY when Live Status is Live AND Show on Website (Yes/No) is Yes
       if (res.ok && (data.ok === true || data.status === 'created' || data.status === 'duplicate')) {
-        if (couponRevealCard) {
-          couponRevealCard.style.display = 'block';
-          newsletterForm.style.display = 'none';
-        }
+        const featuredOffer = (typeof window.getFeaturedPublicOffer === 'function')
+          ? window.getFeaturedPublicOffer()
+          : null;
 
-        if (typeof applyPromoCode === 'function') {
-          applyPromoCode('WELCOME10');
-        }
+        if (featuredOffer) {
+          const revealedEl = document.getElementById('revealedCouponCode');
+          if (revealedEl) revealedEl.textContent = featuredOffer.code;
 
-        if (formMessage) {
-          formMessage.style.color = '#10B981';
-          formMessage.textContent = data.status === 'duplicate'
-            ? 'Welcome back! Your code WELCOME10 is unlocked below.'
-            : 'Welcome to PANOOJA! Code WELCOME10 unlocked below.';
+          if (couponRevealCard) {
+            couponRevealCard.style.display = 'block';
+            newsletterForm.style.display = 'none';
+          }
+
+          if (typeof applyPromoCode === 'function') {
+            applyPromoCode(featuredOffer.code, false);
+          }
+
+          if (formMessage) {
+            formMessage.style.color = '#10B981';
+            formMessage.textContent = data.status === 'duplicate'
+              ? `Welcome back! Your code ${featuredOffer.code} is unlocked below.`
+              : `Welcome to PANOOJA! Code ${featuredOffer.code} unlocked below.`;
+          }
+        } else {
+          if (couponRevealCard) couponRevealCard.style.display = 'none';
+          if (formMessage) {
+            formMessage.style.color = '#10B981';
+            formMessage.textContent = data.status === 'duplicate'
+              ? 'Welcome back to the PANOOJA VIP List!'
+              : 'Welcome to the PANOOJA VIP List! Watch your inbox for private releases.';
+          }
+          if (submitButton) {
+            submitButton.disabled = false;
+            submitButton.textContent = 'Subscribed ✓';
+          }
         }
       } else {
         // Registration failed: DO NOT reveal coupon
@@ -158,18 +179,20 @@ if (newsletterForm) {
 // Copy Coupon Button Handler
 if (copyCouponBtn) {
   copyCouponBtn.addEventListener('click', () => {
-    const code = 'WELCOME10';
+    const revealedEl = document.getElementById('revealedCouponCode');
+    const code = (revealedEl ? revealedEl.textContent : '').trim();
+    if (!code) return;
     navigator.clipboard.writeText(code).then(() => {
       copyCouponBtn.textContent = '✓ Copied & Applied!';
       if (typeof applyPromoCode === 'function') {
-        applyPromoCode(code);
+        applyPromoCode(code, false);
       }
       setTimeout(() => {
         copyCouponBtn.textContent = 'Copy & Apply';
       }, 3000);
     }).catch(() => {
       if (typeof applyPromoCode === 'function') {
-        applyPromoCode(code);
+        applyPromoCode(code, false);
       }
       copyCouponBtn.textContent = '✓ Code Applied!';
     });

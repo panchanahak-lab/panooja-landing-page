@@ -151,7 +151,7 @@ export default async function handler(req, res) {
           return res.status(200).json({
             ok: true,
             status: scriptData.status || localResult.status,
-            message: 'You’re on the list. Code WELCOME10 unlocked below.'
+            message: 'You’re on the list! Welcome to PANOOJA VIP.'
           });
         }
       } catch (scriptErr) {
@@ -163,7 +163,7 @@ export default async function handler(req, res) {
     return res.status(200).json({
       ok: true,
       status: localResult.status,
-      message: 'You’re on the list. Code WELCOME10 unlocked below.'
+      message: 'You’re on the list! Welcome to PANOOJA VIP.'
     });
 
   } catch (error) {

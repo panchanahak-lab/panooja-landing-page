@@ -287,8 +287,8 @@
             <div class="perk-item">
               <span class="perk-icon">✓</span>
               <div>
-                <strong>10% Off First Order</strong>
-                <p>Code WELCOME10 pre-loaded for your account</p>
+                <strong>Exclusive Member Offers</strong>
+                <p>Priority access to live festive &amp; WhatsApp concierge perks</p>
               </div>
             </div>
             <div class="perk-item">

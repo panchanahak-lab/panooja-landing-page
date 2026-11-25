@@ -362,6 +362,8 @@ export function parseOffersFromCSV(csvData) {
     const minOrderValue = parseInt(String(obj['Min Order Value (INR)'] || obj['Min Order Value'] || '0').replace(/[^0-9]/g, ''), 10) || 0;
     const appliesTo = (obj['Applies To'] || 'All Products').trim() || 'All Products';
     const bannerTitle = (obj['Banner / Offer Title'] || obj['Offer Title'] || '').trim();
+    const rawShowOnWebsite = (obj['Show on Website (Yes/No)'] || obj['Show on Website'] || '').trim().toLowerCase();
+    const showOnWebsite = rawShowOnWebsite === 'yes';
 
     offersMap.set(code, {
       code,
@@ -370,6 +372,7 @@ export function parseOffersFromCSV(csvData) {
       discountValue,
       minOrderValue,
       appliesTo,
+      showOnWebsite,
       liveStatus: 'Live'
     });
   }
@@ -400,6 +403,14 @@ export async function fetchOffers(forceRefresh = false) {
     }
     return new Map();
   }
+}
+
+/**
+ * Return only public live offers where both Live Status is Live and Show on Website (Yes/No) is Yes.
+ */
+export async function getPublicOffers(forceRefresh = false) {
+  const offersMap = await fetchOffers(forceRefresh);
+  return Array.from(offersMap.values()).filter(o => o.liveStatus === 'Live' && o.showOnWebsite === true);
 }
 
 /**

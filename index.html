@@ -72,7 +72,7 @@
   <!-- Top Announcement Bar -->
   <div class="announcement" id="liveAnnouncementBar" data-live-offers="true">
     <span class="announcement-dot"></span>
-    <span class="announcement-offers">FREE SHIPPING ABOVE ₹799 · USE CODE <strong>WELCOME10</strong> FOR 10% OFF YOUR FIRST ORDER</span>
+    <span class="announcement-offers">WATERPROOF &amp; ANTI-TARNISH JEWELLERY · FREE EXPRESS SHIPPING ABOVE ₹799</span>
   </div>
 
   <!-- Header -->
@@ -274,13 +274,13 @@
       </div>
     </section>
 
-    <!-- Newsletter: 10% Off First Order -->
+    <!-- Newsletter & Public Store Offers -->
     <section class="waitlist section" id="newsletter">
       <div class="waitlist-card reveal">
         <div>
-          <p class="eyebrow">VIP WELCOME OFFER</p>
-          <h2>Get 10% Off Your First Order.</h2>
-          <p>Subscribe to receive your exclusive promo code <strong>WELCOME10</strong> for 10% off your first purchase above ₹500, plus private styling edits and early access to limited drops.</p>
+          <p class="eyebrow" id="newsletterEyebrow">PANOOJA PRIVATE CLUB</p>
+          <h2 id="newsletterHeading">Join Our VIP List.</h2>
+          <p id="newsletterCopy">Subscribe for private styling edits, early access to limited anti-tarnish drops, and member-only storefront offers.</p>
         </div>
         <div class="newsletter-wrap">
           <form class="waitlist-form" id="newsletterForm">
@@ -295,22 +295,22 @@
             <!-- Honeypot -->
             <input type="text" name="companyWebsite" style="display:none !important" tabindex="-1" autocomplete="off">
             
-            <button class="button button-primary" type="submit" id="newsletterSubmitBtn">Claim My 10% Off</button>
+            <button class="button button-primary" type="submit" id="newsletterSubmitBtn">Join VIP List</button>
             <p class="form-message" id="newsletterMessage" role="status" aria-live="polite"></p>
             <p class="privacy-text" style="font-size: 0.75rem; opacity: 0.7; margin-top: 8px; text-align: center;">We respect your privacy. Zero spam, unsubscribe anytime.</p>
           </form>
 
-          <!-- Coupon Reveal Box (Appears on Signup) -->
+          <!-- Coupon Reveal Box (Appears on Signup only when a public promo offer is active) -->
           <div class="coupon-reveal-card" id="couponRevealCard" style="display: none;">
             <div class="coupon-reveal-header">
               <span class="coupon-badge">🎉 WELCOME TO PANOOJA</span>
-              <h4>Your 10% Off Promo Code</h4>
+              <h4 id="couponRevealHeading">Your Exclusive Promo Code</h4>
             </div>
             <div class="coupon-code-box">
-              <code id="revealedCouponCode">WELCOME10</code>
+              <code id="revealedCouponCode"></code>
               <button type="button" class="button button-secondary copy-coupon-btn" id="copyCouponBtn">Copy &amp; Apply</button>
             </div>
-            <p class="coupon-hint">Valid on all orders above ₹500. Automatically saved for your cart!</p>
+            <p class="coupon-hint" id="newsletterCouponHint">Automatically saved for your cart!</p>
           </div>
         </div>
       </div>
@@ -352,8 +352,8 @@
           <p>Yes. We use premium 316L medical-grade stainless steel engineered specifically for sensitive skin. It is 100% lead-free, non-reactive, and resistant to corrosion and sweat, preventing skin irritation or green stains.</p>
         </details>
         <details class="reveal">
-          <summary>How do I redeem discount codes like WELCOME10?<span>+</span></summary>
-          <p>Open your Cart Drawer by clicking "Cart" at the top right, enter your code in the promo box, and click "Apply". Use code <strong>WELCOME10</strong> for 10% off your first order over ₹500, or <strong>FESTIVE200</strong> for ₹200 off orders over ₹1499.</p>
+          <summary>How do I redeem a coupon code?<span>+</span></summary>
+          <p>Open your Cart Drawer or Checkout, click any offer in Available Coupons or enter your coupon code in the "Apply Coupon Code" box, and click "Apply". Discounts and minimum order thresholds are calculated automatically.</p>
         </details>
       </div>
     </section>
@@ -423,11 +423,15 @@
           <button type="button" id="applyPromoBtn" class="button button-secondary">Apply</button>
         </div>
         <div class="promo-applied-tag" id="promoAppliedTag" style="display: none;">
-          <span class="promo-code-name" id="promoCodeLabel">WELCOME10</span>
+          <span class="promo-code-name" id="promoCodeLabel"></span>
           <button type="button" id="removePromoBtn" class="promo-remove-btn" aria-label="Remove coupon code">Remove</button>
         </div>
         <div class="promo-feedback" id="promoFeedback" role="status" aria-live="polite"></div>
-        <div class="promo-hint" id="promoHint">Use <strong>WELCOME10</strong> (10% off &gt; ₹500) or <strong>FESTIVE200</strong> (₹200 off &gt; ₹1499)</div>
+        <div class="available-coupons-wrap" id="promoAvailableWrap" style="display: none;">
+          <div class="available-coupons-title">Available Coupons</div>
+          <div class="available-coupons-list" id="promoAvailableList"></div>
+        </div>
+        <div class="promo-hint" id="promoHint">Have a private coupon code? Enter it above.</div>
       </div>
 
       <!-- Pricing Summary -->
@@ -499,11 +503,15 @@
           <button type="button" id="checkoutApplyPromoBtn" class="button button-secondary">Apply</button>
         </div>
         <div class="promo-applied-tag" id="checkoutPromoAppliedTag" style="display: none;">
-          <span class="promo-code-name" id="checkoutPromoCodeLabel">WELCOME10</span>
+          <span class="promo-code-name" id="checkoutPromoCodeLabel"></span>
           <button type="button" id="checkoutRemovePromoBtn" class="promo-remove-btn" aria-label="Remove coupon code">Remove</button>
         </div>
         <div class="promo-feedback" id="checkoutPromoFeedback" role="status" aria-live="polite"></div>
-        <div class="promo-hint" id="checkoutPromoHint">Have a festive or welcome coupon? Apply it above.</div>
+        <div class="available-coupons-wrap" id="checkoutPromoAvailableWrap" style="display: none;">
+          <div class="available-coupons-title">Available Coupons</div>
+          <div class="available-coupons-list" id="checkoutPromoAvailableList"></div>
+        </div>
+        <div class="promo-hint" id="checkoutPromoHint">Have a private coupon code? Enter it above.</div>
       </div>
 
       <!-- Mini Order Review -->

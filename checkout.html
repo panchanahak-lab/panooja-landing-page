@@ -23,7 +23,7 @@
 <body>
   <div class="announcement" id="liveAnnouncementBar" data-live-offers="true">
     <span class="announcement-dot"></span>
-    <span class="announcement-offers">FREE SHIPPING ABOVE ₹799 · USE CODE <strong>WELCOME10</strong> FOR 10% OFF YOUR FIRST ORDER</span>
+    <span class="announcement-offers">WATERPROOF &amp; ANTI-TARNISH JEWELLERY · FREE EXPRESS SHIPPING ABOVE ₹799</span>
   </div>
 
   <header class="site-header" id="top">
@@ -99,11 +99,15 @@
               <button type="button" id="pageApplyPromoBtn" class="button button-secondary">Apply</button>
             </div>
             <div class="promo-applied-tag" id="pagePromoAppliedTag" style="display: none;">
-              <span class="promo-code-name" id="pagePromoCodeLabel">WELCOME10</span>
+              <span class="promo-code-name" id="pagePromoCodeLabel"></span>
               <button type="button" id="pageRemovePromoBtn" class="promo-remove-btn" aria-label="Remove coupon code">Remove</button>
             </div>
             <div class="promo-feedback" id="pagePromoFeedback" role="status" aria-live="polite"></div>
-            <div class="promo-hint" id="pagePromoHint">Have a festive or welcome coupon? Apply it above.</div>
+            <div class="available-coupons-wrap" id="pagePromoAvailableWrap" style="display: none;">
+              <div class="available-coupons-title">Available Coupons</div>
+              <div class="available-coupons-list" id="pagePromoAvailableList"></div>
+            </div>
+            <div class="promo-hint" id="pagePromoHint">Have a private coupon code? Enter it above.</div>
           </div>
 
           <div style="margin-top: 12px; padding: 16px; background: var(--soft-cool-white); border-radius: var(--radius-sm); border: 1px solid var(--light-grey); display: flex; flex-direction: column; gap: 8px;">

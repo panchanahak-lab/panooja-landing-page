@@ -116,6 +116,8 @@ function parseOffersFromCsv(csvData) {
     const minOrderValue = parseInt(String(obj['Min Order Value (INR)'] || obj['Min Order Value'] || '0').replace(/[^0-9]/g, ''), 10) || 0;
     const appliesTo = (obj['Applies To'] || 'All Products').trim() || 'All Products';
     const bannerTitle = (obj['Banner / Offer Title'] || obj['Offer Title'] || '').trim();
+    const rawShow = (obj['Show on Website (Yes/No)'] || obj['Show on Website'] || '').trim().toLowerCase();
+    const showOnWebsite = rawShow === 'yes';
 
     offers.set(code, {
       code,
@@ -124,24 +126,37 @@ function parseOffersFromCsv(csvData) {
       discountValue,
       minOrderValue,
       appliesTo,
+      showOnWebsite,
       liveStatus: 'Live'
     });
   }
   return offers;
 }
 
-// Update top announcement bar automatically with Live offers from Google Sheet
+// Return only coupons where both Live Status === 'Live' and Show on Website (Yes/No) === 'Yes'
+function getPublicLiveOffers() {
+  return Array.from(liveOffersMap.values()).filter(o => o.liveStatus === 'Live' && o.showOnWebsite === true);
+}
+
+// Return featured public offer for the homepage VIP promo section (if any)
+function getFeaturedPublicOffer() {
+  const publicOffers = getPublicLiveOffers();
+  if (publicOffers.length === 0) return null;
+  return publicOffers.find(o => o.code === 'WELCOME10') || publicOffers[0];
+}
+
+// Update top announcement bar automatically ONLY with public Live offers (Show on Website === Yes)
 function updateAnnouncementBarWithOffers() {
   const bar = document.getElementById('liveAnnouncementBar') || document.querySelector('.announcement[data-live-offers="true"]');
   if (!bar) return;
 
-  const offersList = Array.from(liveOffersMap.values());
-  if (offersList.length === 0) {
+  const publicOffers = getPublicLiveOffers();
+  if (publicOffers.length === 0) {
     bar.innerHTML = `<span class="announcement-dot"></span><span class="announcement-offers">WATERPROOF &amp; ANTI-TARNISH JEWELLERY · FREE EXPRESS SHIPPING ABOVE ₹${FREE_SHIPPING_THRESHOLD}</span>`;
     return;
   }
 
-  const segments = offersList.map(offer => {
+  const segments = publicOffers.map(offer => {
     const title = offer.bannerTitle || `${offer.code} Offer`;
     const alreadyHasCode = title.toUpperCase().includes(offer.code);
     if (alreadyHasCode) {
@@ -151,6 +166,56 @@ function updateAnnouncementBarWithOffers() {
   });
 
   bar.innerHTML = `<span class="announcement-dot"></span><span class="announcement-offers">${segments.join('<span class="announcement-sep" aria-hidden="true">·</span>')}</span>`;
+}
+
+// Update Homepage VIP Promo Section dynamically from public offers (never reveals Show on Website = No offers)
+function syncHomepagePromoSection() {
+  const eyebrowEl = document.getElementById('newsletterEyebrow');
+  const headingEl = document.getElementById('newsletterHeading');
+  const copyEl = document.getElementById('newsletterCopy');
+  const submitBtn = document.getElementById('newsletterSubmitBtn');
+  const revealedCodeEl = document.getElementById('revealedCouponCode');
+  const revealHeadingEl = document.getElementById('couponRevealHeading');
+  const couponHintEl = document.getElementById('newsletterCouponHint');
+
+  if (!eyebrowEl && !headingEl && !copyEl) return;
+
+  const featured = getFeaturedPublicOffer();
+  if (!featured) {
+    if (eyebrowEl) eyebrowEl.textContent = 'PANOOJA PRIVATE CLUB';
+    if (headingEl) headingEl.textContent = 'Join Our VIP List.';
+    if (copyEl) copyEl.textContent = 'Subscribe for private styling edits, early access to limited anti-tarnish drops, and member-only updates.';
+    if (submitBtn && !submitBtn.disabled) submitBtn.textContent = 'Join VIP List';
+    if (revealedCodeEl) revealedCodeEl.textContent = '';
+    return;
+  }
+
+  const offerDesc = featured.bannerTitle || (
+    featured.discountType === 'percentage' ? `${featured.discountValue}% Off`
+      : featured.discountType === 'free_shipping' ? 'Free Express Shipping'
+        : `₹${featured.discountValue} Off`
+  );
+  const minText = featured.minOrderValue > 0 ? ` on orders above ₹${featured.minOrderValue.toLocaleString('en-IN')}` : '';
+
+  if (eyebrowEl) eyebrowEl.textContent = 'VIP STOREFRONT OFFER';
+  if (headingEl) headingEl.textContent = offerDesc;
+  if (copyEl) {
+    copyEl.innerHTML = `Subscribe to unlock promo code <strong>${escapeCartHtml(featured.code)}</strong> (${escapeCartHtml(offerDesc)}${escapeCartHtml(minText)}), plus private styling edits and early access to new drops.`;
+  }
+  if (submitBtn && !submitBtn.disabled) {
+    submitBtn.textContent = featured.discountType === 'percentage'
+      ? `Unlock ${featured.discountValue}% Off`
+      : featured.discountType === 'flat_inr'
+        ? `Unlock ₹${featured.discountValue} Off`
+        : 'Unlock VIP Offer';
+  }
+  if (revealedCodeEl) revealedCodeEl.textContent = featured.code;
+  if (revealHeadingEl) revealHeadingEl.textContent = offerDesc;
+  if (couponHintEl) {
+    couponHintEl.textContent = featured.minOrderValue > 0
+      ? `Valid on orders above ₹${featured.minOrderValue.toLocaleString('en-IN')}. Automatically saved for your cart!`
+      : 'Automatically saved for your cart!';
+  }
 }
 
 // Fetch live offers CSV on page load (cached within page session, bypassed on browser reload)
@@ -174,6 +239,7 @@ function fetchLiveOffers(forceRefresh = false) {
     }
 
     updateAnnouncementBarWithOffers();
+    syncHomepagePromoSection();
     renderCartDrawer();
     updateCheckoutPreview();
     renderPageCheckout();
@@ -470,41 +536,53 @@ function renderCartDrawer() {
   syncAllPromoUIs(discountInfo, subtotal);
 }
 
-// Synchronize Coupon Input, Applied Tag, Remove Button, Savings Feedback & Live Hints across Drawer & Checkout
+// Synchronize Coupon Input, Applied Tag, Remove Button, Savings Feedback & Public Available Coupons across Drawer & Checkout
 function syncAllPromoUIs(discountInfo, subtotal) {
   const promoContainers = [
     {
       tag: document.getElementById('promoAppliedTag'),
       label: document.getElementById('promoCodeLabel'),
       feedback: document.getElementById('promoFeedback'),
+      availableWrap: document.getElementById('promoAvailableWrap'),
+      availableList: document.getElementById('promoAvailableList'),
       hint: document.getElementById('promoHint')
     },
     {
       tag: document.getElementById('checkoutPromoAppliedTag'),
       label: document.getElementById('checkoutPromoCodeLabel'),
       feedback: document.getElementById('checkoutPromoFeedback'),
+      availableWrap: document.getElementById('checkoutPromoAvailableWrap'),
+      availableList: document.getElementById('checkoutPromoAvailableList'),
       hint: document.getElementById('checkoutPromoHint')
     },
     {
       tag: document.getElementById('pagePromoAppliedTag'),
       label: document.getElementById('pagePromoCodeLabel'),
       feedback: document.getElementById('pagePromoFeedback'),
+      availableWrap: document.getElementById('pagePromoAvailableWrap'),
+      availableList: document.getElementById('pagePromoAvailableList'),
       hint: document.getElementById('pagePromoHint')
     }
   ];
 
-  // Build concise live hint string from Google Sheet Offers
-  const liveList = Array.from(liveOffersMap.values());
-  let hintHtml = 'No active coupon codes at this time.';
+  // Public display: ONLY include offers where Live Status is Live AND Show on Website (Yes/No) is Yes
+  const publicList = getPublicLiveOffers();
+  let hintText = 'Have a private coupon code? Enter it above.';
   if (!liveOffersLoaded) {
-    hintHtml = 'Loading live offers...';
-  } else if (liveList.length > 0) {
-    const parts = liveList.map(o => {
-      const desc = o.bannerTitle || (o.discountType === 'percentage' ? `${o.discountValue}% off` : o.discountType === 'free_shipping' ? 'Free shipping' : `₹${o.discountValue} off`);
-      return `<strong>${escapeCartHtml(o.code)}</strong> (${escapeCartHtml(desc)})`;
-    });
-    hintHtml = `Available offers: ${parts.join(' · ')}`;
+    hintText = 'Loading live offers...';
+  } else if (publicList.length > 0) {
+    hintText = 'Tap an available coupon above or enter a private code.';
   }
+
+  const availableChipsHtml = publicList.map(o => {
+    const desc = o.bannerTitle || (o.discountType === 'percentage' ? `${o.discountValue}% off` : o.discountType === 'free_shipping' ? 'Free shipping' : `₹${o.discountValue} off`);
+    const isApplied = appliedCoupon && appliedCoupon.toUpperCase().trim() === o.code && discountInfo.valid;
+    return `<button type="button" class="available-coupon-chip ${isApplied ? 'is-applied' : ''}" data-coupon-code="${escapeCartHtml(o.code)}">
+      <span class="chip-code">${escapeCartHtml(o.code)}</span>
+      <span class="chip-desc">${escapeCartHtml(desc)}</span>
+      <span class="chip-cta">${isApplied ? 'Applied' : 'Apply'}</span>
+    </button>`;
+  }).join('');
 
   // Decide inline feedback message & style
   let feedbackType = '';
@@ -545,8 +623,18 @@ function syncAllPromoUIs(discountInfo, subtotal) {
       }
     }
 
+    if (ui.availableWrap && ui.availableList) {
+      if (liveOffersLoaded && publicList.length > 0) {
+        ui.availableWrap.style.display = 'block';
+        ui.availableList.innerHTML = availableChipsHtml;
+      } else {
+        ui.availableWrap.style.display = 'none';
+        ui.availableList.innerHTML = '';
+      }
+    }
+
     if (ui.hint) {
-      ui.hint.innerHTML = hintHtml;
+      ui.hint.textContent = hintText;
     }
   });
 }
@@ -1189,6 +1277,17 @@ document.addEventListener('DOMContentLoaded', () => {
   bindPromoControl('checkoutPromoInput', 'checkoutApplyPromoBtn', 'checkoutRemovePromoBtn');
   bindPromoControl('pagePromoInput', 'pageApplyPromoBtn', 'pageRemovePromoBtn');
 
+  // Delegated click handler for clickable "Available Coupons" chips
+  document.addEventListener('click', (e) => {
+    const chip = e.target.closest('.available-coupon-chip');
+    if (chip) {
+      const code = chip.getAttribute('data-coupon-code');
+      if (code) {
+        applyPromoCode(code, true);
+      }
+    }
+  });
+
   // Open Checkout Modal from Drawer
   const openCheckoutBtn = document.getElementById('openCheckoutModalBtn');
   if (openCheckoutBtn) {
@@ -1313,3 +1412,5 @@ window.renderPageCheckout = renderPageCheckout;
 window.applyPromoCode = applyPromoCode;
 window.removePromoCode = removePromoCode;
 window.calculateDiscount = calculateDiscount;
+window.getPublicLiveOffers = getPublicLiveOffers;
+window.getFeaturedPublicOffer = getFeaturedPublicOffer;
