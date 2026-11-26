@@ -1,8 +1,69 @@
-// cart.js - PANOOJA Luxury E-Commerce Cart Engine, Live Offers & Checkout
-const PANOOJA_WHATSAPP_NUMBER = '919876543210'; // Official PANOOJA WhatsApp concierge number
+// cart.js - PANOOJA Storefront Cart Engine, Live Offers & Checkout
+const PANOOJA_WHATSAPP_NUMBER = (typeof window !== 'undefined' && window.PANOOJA_CONFIG && window.PANOOJA_CONFIG.WHATSAPP_NUMBER) || '917984528870'; // Official PANOOJA WhatsApp concierge number
 const OFFERS_SHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQ1yF6fF2S8x5dH3u24uH2DNt8WOl9xZ_UTLA6JNmAWbn1XUroDBjS6M-GPXlSHLLtkSaXTllKNQz-n/pub?gid=2&single=true&output=csv';
 const FREE_SHIPPING_THRESHOLD = 799;
 const STANDARD_SHIPPING_FEE = 79;
+
+function isOnlinePaymentsEnabled() {
+  return Boolean(typeof window !== 'undefined' && window.PANOOJA_CONFIG && window.PANOOJA_CONFIG.ONLINE_PAYMENTS_ENABLED === true);
+}
+
+function getPanoojaBusinessHours() {
+  return (typeof window !== 'undefined' && window.PANOOJA_CONFIG && window.PANOOJA_CONFIG.BUSINESS_HOURS) || 'Mon–Sat, 10:00 AM – 7:00 PM IST';
+}
+
+// Toggle Razorpay UI & payment copy consistently across the storefront
+function syncPaymentModeUI() {
+  const onlineEnabled = isOnlinePaymentsEnabled();
+
+  const modalWrap = document.getElementById('checkoutActionsWrap');
+  const modalWaBtn = document.getElementById('checkoutWhatsappBtn');
+  const modalOnlineBtn = document.getElementById('checkoutOnlineBtn');
+  if (modalOnlineBtn) {
+    modalOnlineBtn.style.display = onlineEnabled ? '' : 'none';
+    modalOnlineBtn.disabled = !onlineEnabled;
+    if (onlineEnabled && modalWrap && modalWaBtn) {
+      modalWrap.insertBefore(modalOnlineBtn, modalWaBtn);
+    }
+  }
+
+  const pageWrap = document.getElementById('pageCheckoutActionsWrap');
+  const pageWaBtn = document.getElementById('pageCheckoutWhatsappBtn');
+  const pageOnlineBtn = document.getElementById('pageCheckoutOnlineBtn');
+  if (pageOnlineBtn) {
+    pageOnlineBtn.style.display = onlineEnabled ? '' : 'none';
+    pageOnlineBtn.disabled = !onlineEnabled;
+    if (onlineEnabled && pageWrap && pageWaBtn) {
+      pageWrap.insertBefore(pageOnlineBtn, pageWaBtn);
+    }
+  }
+
+  const trustTitle = document.getElementById('trustStripPaymentTitle');
+  const trustDesc = document.getElementById('trustStripPaymentDesc');
+  if (trustTitle) trustTitle.textContent = onlineEnabled ? 'Secure UPI & Cards' : 'Easy WhatsApp ordering';
+  if (trustDesc) trustDesc.textContent = onlineEnabled ? '100% encrypted checkout via Razorpay & WhatsApp' : 'Confirm your order and pay by UPI';
+
+  const faqPayment = document.getElementById('faqPaymentAnswer');
+  if (faqPayment) {
+    faqPayment.textContent = onlineEnabled
+      ? 'We support 100% secure online payments through Razorpay, including UPI (Google Pay, PhonePe, Paytm), Debit/Credit Cards, and Net Banking. You can also complete your order seamlessly via WhatsApp with one click!'
+      : 'Order via WhatsApp — we confirm stock and share UPI payment details, and dispatch once payment is received.';
+  }
+
+  const modalNote = document.getElementById('checkoutPaymentNote');
+  if (modalNote) {
+    modalNote.textContent = onlineEnabled
+      ? '🔒 100% Encrypted Checkout via Razorpay · Replacement within 7 days for damaged, defective or wrong items. An uncut unboxing video is required.'
+      : 'Pay by UPI after we confirm your order on WhatsApp · Replacement within 7 days for damaged, defective or wrong items. An uncut unboxing video is required.';
+  }
+
+  const pageNote = document.getElementById('pageCheckoutPaymentNote');
+  if (pageNote) {
+    pageNote.textContent = onlineEnabled
+      ? '🔒 100% Encrypted Checkout via Razorpay'
+      : 'Pay by UPI after we confirm your order on WhatsApp';
+  }
+}
 
 let cart = JSON.parse(localStorage.getItem('panooja_cart')) || [];
 let appliedCoupon = localStorage.getItem('panooja_coupon') || null;
@@ -168,7 +229,7 @@ function updateAnnouncementBarWithOffers() {
   bar.innerHTML = `<span class="announcement-dot"></span><span class="announcement-offers">${segments.join('<span class="announcement-sep" aria-hidden="true">·</span>')}</span>`;
 }
 
-// Update Homepage VIP Promo Section dynamically from public offers (never reveals Show on Website = No offers)
+// Update Homepage Promo Section dynamically from public offers (never reveals Show on Website = No offers)
 function syncHomepagePromoSection() {
   const eyebrowEl = document.getElementById('newsletterEyebrow');
   const headingEl = document.getElementById('newsletterHeading');
@@ -182,10 +243,10 @@ function syncHomepagePromoSection() {
 
   const featured = getFeaturedPublicOffer();
   if (!featured) {
-    if (eyebrowEl) eyebrowEl.textContent = 'PANOOJA PRIVATE CLUB';
-    if (headingEl) headingEl.textContent = 'Join Our VIP List.';
-    if (copyEl) copyEl.textContent = 'Subscribe for private styling edits, early access to limited anti-tarnish drops, and member-only updates.';
-    if (submitBtn && !submitBtn.disabled) submitBtn.textContent = 'Join VIP List';
+    if (eyebrowEl) eyebrowEl.textContent = 'PANOOJA JOURNAL';
+    if (headingEl) headingEl.textContent = 'Stay in the loop.';
+    if (copyEl) copyEl.textContent = 'Join our list for new drops and styling edits.';
+    if (submitBtn && !submitBtn.disabled) submitBtn.textContent = 'Join List';
     if (revealedCodeEl) revealedCodeEl.textContent = '';
     return;
   }
@@ -195,19 +256,23 @@ function syncHomepagePromoSection() {
       : featured.discountType === 'free_shipping' ? 'Free Express Shipping'
         : `₹${featured.discountValue} Off`
   );
-  const minText = featured.minOrderValue > 0 ? ` on orders above ₹${featured.minOrderValue.toLocaleString('en-IN')}` : '';
+  const minText = featured.minOrderValue > 0 ? ` above ₹${featured.minOrderValue.toLocaleString('en-IN')}` : '';
 
-  if (eyebrowEl) eyebrowEl.textContent = 'VIP STOREFRONT OFFER';
-  if (headingEl) headingEl.textContent = offerDesc;
+  if (eyebrowEl) eyebrowEl.textContent = 'WELCOME OFFER';
+  if (headingEl) headingEl.textContent = featured.code === 'WELCOME10' ? 'Join our list & save on your first order.' : offerDesc;
   if (copyEl) {
-    copyEl.innerHTML = `Subscribe to unlock promo code <strong>${escapeCartHtml(featured.code)}</strong> (${escapeCartHtml(offerDesc)}${escapeCartHtml(minText)}), plus private styling edits and early access to new drops.`;
+    if (featured.code === 'WELCOME10') {
+      copyEl.innerHTML = 'Join our list for new drops and styling edits. Use <strong>WELCOME10</strong> for 10% off your first order above ₹500.';
+    } else {
+      copyEl.innerHTML = `Join our list for new drops and styling edits. Use <strong>${escapeCartHtml(featured.code)}</strong> (${escapeCartHtml(offerDesc)}${escapeCartHtml(minText)}).`;
+    }
   }
   if (submitBtn && !submitBtn.disabled) {
     submitBtn.textContent = featured.discountType === 'percentage'
-      ? `Unlock ${featured.discountValue}% Off`
+      ? `Join & Unlock ${featured.discountValue}% Off`
       : featured.discountType === 'flat_inr'
-        ? `Unlock ₹${featured.discountValue} Off`
-        : 'Unlock VIP Offer';
+        ? `Join & Unlock ₹${featured.discountValue} Off`
+        : 'Join List';
   }
   if (revealedCodeEl) revealedCodeEl.textContent = featured.code;
   if (revealHeadingEl) revealHeadingEl.textContent = offerDesc;
@@ -396,11 +461,13 @@ function openCheckoutModal() {
     if (user) {
       const drawerName = document.getElementById('checkoutName');
       const drawerPhone = document.getElementById('checkoutPhone');
-      const drawerAddress = document.getElementById('checkoutAddress');
+      const drawerEmail = document.getElementById('checkoutEmail');
+      const drawerStreet = document.getElementById('checkoutStreet') || document.getElementById('checkoutAddress');
       const drawerPincode = document.getElementById('checkoutPincode');
       if (drawerName && !drawerName.value) drawerName.value = user.name || '';
       if (drawerPhone && !drawerPhone.value && user.phone) drawerPhone.value = user.phone;
-      if (drawerAddress && !drawerAddress.value && user.address) drawerAddress.value = user.address;
+      if (drawerEmail && !drawerEmail.value && user.email) drawerEmail.value = user.email;
+      if (drawerStreet && !drawerStreet.value && user.address) drawerStreet.value = user.address;
       if (drawerPincode && !drawerPincode.value && user.pincode) drawerPincode.value = user.pincode;
     }
   } catch (e) {}
@@ -789,48 +856,150 @@ function removePromoCode() {
   saveCart();
 }
 
-// Generate formatted WhatsApp Order Text and Redirect
-function orderViaWhatsApp(isPageCheckout = false) {
-  const nameInput = document.getElementById(isPageCheckout ? 'pageCheckoutName' : 'checkoutName');
-  const phoneInput = document.getElementById(isPageCheckout ? 'pageCheckoutPhone' : 'checkoutPhone');
-  const addressInput = document.getElementById(isPageCheckout ? 'pageCheckoutAddress' : 'checkoutAddress');
-  const pincodeInput = document.getElementById(isPageCheckout ? 'pageCheckoutPincode' : 'checkoutPincode');
+// Shared Checkout Form Reader & Validator (drawer modal + standalone checkout.html)
+function readAndValidateCheckoutFields(isPageCheckout = false) {
+  const prefix = isPageCheckout ? 'pageCheckout' : 'checkout';
+  const nameInput = document.getElementById(`${prefix}Name`);
+  const phoneInput = document.getElementById(`${prefix}Phone`);
+  const emailInput = document.getElementById(`${prefix}Email`);
+  const streetInput = document.getElementById(`${prefix}Street`) || document.getElementById(`${prefix}Address`);
+  const landmarkInput = document.getElementById(`${prefix}Landmark`);
+  const cityInput = document.getElementById(`${prefix}City`);
+  const stateInput = document.getElementById(`${prefix}State`);
+  const pincodeInput = document.getElementById(`${prefix}Pincode`);
 
   const name = nameInput ? nameInput.value.trim() : '';
   const phone = phoneInput ? phoneInput.value.trim() : '';
-  const address = addressInput ? addressInput.value.trim() : '';
+  const rawEmail = emailInput ? emailInput.value.trim() : '';
+  const street = streetInput ? streetInput.value.trim() : '';
+  const landmark = landmarkInput ? landmarkInput.value.trim() : '';
+  const city = cityInput ? cityInput.value.trim() : '';
+  const state = stateInput ? stateInput.value.trim() : '';
   const pincode = pincodeInput ? pincodeInput.value.trim() : '';
 
   if (!name) {
     alert('Please enter your full name.');
     if (nameInput) nameInput.focus();
-    return;
+    return null;
   }
 
   const cleanPhone = phone.replace(/[^0-9]/g, '');
-  if (!/^[6-9]\d{9}$/.test(cleanPhone)) {
-    alert('Please enter a valid 10-digit Indian WhatsApp mobile number (starting with 6, 7, 8, or 9).');
+  if (!cleanPhone || !/^[6-9]\d{9}$/.test(cleanPhone)) {
+    alert('Please enter a valid 10-digit Indian mobile / WhatsApp number (starting with 6, 7, 8, or 9).');
     if (phoneInput) phoneInput.focus();
-    return;
+    return null;
   }
 
-  if (!address) {
-    alert('Please enter your complete delivery address.');
-    if (addressInput) addressInput.focus();
-    return;
+  if (rawEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(rawEmail)) {
+    alert('Please enter a valid email address or leave it blank.');
+    if (emailInput) emailInput.focus();
+    return null;
+  }
+
+  if (!street) {
+    alert('Please enter your House/Flat & Street.');
+    if (streetInput) streetInput.focus();
+    return null;
+  }
+
+  if (cityInput && !city) {
+    alert('Please enter your City.');
+    cityInput.focus();
+    return null;
+  }
+
+  if (stateInput && !state) {
+    alert('Please select your State.');
+    stateInput.focus();
+    return null;
   }
 
   const cleanPincode = pincode.replace(/[^0-9]/g, '');
-  if (!/^[1-9]\d{5}$/.test(cleanPincode)) {
+  if (!cleanPincode || !/^[1-9]\d{5}$/.test(cleanPincode)) {
     alert('Please enter a valid 6-digit Indian delivery PIN code.');
     if (pincodeInput) pincodeInput.focus();
-    return;
+    return null;
   }
 
   if (cart.length === 0) {
     alert('Your shopping bag is empty.');
-    return;
+    return null;
   }
+
+  const panoojaUser = (typeof window.panoojaAuth !== 'undefined') ? window.panoojaAuth.getUser() : null;
+  const email = rawEmail || (panoojaUser && panoojaUser.email) || '';
+  const fullAddress = [street, landmark ? `Near ${landmark}` : '', city, state].filter(Boolean).join(', ') + ` - ${cleanPincode}`;
+
+  return {
+    name,
+    cleanPhone,
+    email,
+    street,
+    landmark,
+    city,
+    state,
+    cleanPincode,
+    fullAddress
+  };
+}
+
+// Confirmation screen shown after tapping Order via WhatsApp
+function showWhatsappConfirmationScreen({ inquiryRef, total, waUrl }) {
+  const existing = document.getElementById('whatsappOrderConfirmModal');
+  if (existing) existing.remove();
+
+  const businessHours = getPanoojaBusinessHours();
+  const modal = document.createElement('div');
+  modal.id = 'whatsappOrderConfirmModal';
+  modal.setAttribute('role', 'dialog');
+  modal.setAttribute('aria-modal', 'true');
+  modal.setAttribute('aria-labelledby', 'waConfirmTitle');
+  modal.style.cssText = `
+    position: fixed; inset: 0; background: rgba(5,5,5,0.82); backdrop-filter: blur(6px);
+    display: flex; align-items: center; justify-content: center; z-index: 9999; padding: 20px;
+  `;
+
+  modal.innerHTML = `
+    <div style="background: #FFFFFF; max-width: 480px; width: 100%; border-radius: 8px; padding: 34px 26px; text-align: center; box-shadow: 0 20px 60px rgba(0,0,0,0.3); border: 1px solid #D9DEE7;">
+      <div style="width: 56px; height: 56px; background: rgba(37, 211, 102, 0.12); border: 2px solid #25D366; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 16px; color: #1EBE5D; font-size: 1.6rem;">
+        ✓
+      </div>
+      <h3 id="waConfirmTitle" style="font-family: var(--font-serif); font-size: 1.85rem; color: #050505; margin: 0 0 10px;">Order Request Ready on WhatsApp</h3>
+      <p style="font-size: 0.94rem; color: #242424; margin: 0 0 18px; line-height: 1.55;">
+        Your order request has been sent on WhatsApp. We&rsquo;ll confirm stock and share payment details within <strong>${escapeCartHtml(businessHours)}</strong>.
+      </p>
+      <div style="background: #F5F6F8; border: 1px solid #D9DEE7; border-radius: 6px; padding: 12px 14px; text-align: left; font-size: 0.84rem; margin-bottom: 20px; line-height: 1.7; color: #242424;">
+        <div><strong>Reference:</strong> #${escapeCartHtml(inquiryRef)}</div>
+        <div><strong>Estimated Total:</strong> ₹${Number(total || 0).toLocaleString('en-IN')} <span style="color:#6B7280;">(Inclusive of all taxes)</span></div>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 10px;">
+        <a href="${escapeCartHtml(waUrl)}" target="_blank" rel="noopener noreferrer" class="button button-whatsapp" style="width: 100%; text-decoration: none;">
+          Open WhatsApp Chat
+        </a>
+        <button type="button" class="button button-secondary" id="waConfirmCloseBtn" style="width: 100%;">
+          Continue Shopping
+        </button>
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(modal);
+
+  const closeBtn = document.getElementById('waConfirmCloseBtn');
+  if (closeBtn) {
+    closeBtn.addEventListener('click', () => modal.remove());
+  }
+  modal.addEventListener('click', (e) => {
+    if (e.target === modal) modal.remove();
+  });
+}
+
+// Generate formatted WhatsApp Order Text and Redirect
+function orderViaWhatsApp(isPageCheckout = false) {
+  const details = readAndValidateCheckoutFields(isPageCheckout);
+  if (!details) return;
+
+  const { name, cleanPhone, email, street, landmark, city, state, cleanPincode, fullAddress } = details;
 
   const subtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
   const discountInfo = calculateDiscount(subtotal);
@@ -844,8 +1013,8 @@ function orderViaWhatsApp(isPageCheckout = false) {
     itemsListText += `${index + 1}. *${item.title}* (SKU: ${item.sku || item.id || 'N/A'}) x ${item.quantity} - ₹${(item.price * item.quantity).toLocaleString('en-IN')}\n`;
   });
 
-  const panoojaUser = (typeof window.panoojaAuth !== 'undefined') ? window.panoojaAuth.getUser() : null;
-  const emailLine = (panoojaUser && panoojaUser.email) ? `• Client Email: ${panoojaUser.email}\n` : '';
+  const emailLine = email ? `• Email: ${email}\n` : '';
+  const landmarkLine = landmark ? `• Landmark: ${landmark}\n` : '';
   let discountLine = '';
   if (discountInfo.valid && discountInfo.amount > 0) {
     discountLine = `• Discount (${discountInfo.code}): -₹${discountInfo.amount.toLocaleString('en-IN')}\n`;
@@ -859,91 +1028,63 @@ Reference: #${inquiryRef}
 👤 *Customer Details:*
 • Name: ${name}
 • WhatsApp Phone: +91 ${cleanPhone}
-${emailLine}• Delivery Address: ${address}
+${emailLine}• House/Flat & Street: ${street}
+${landmarkLine}• City: ${city}
+• State: ${state}
 • PIN Code: ${cleanPincode}
 
 🛍️ *Items in Bag:*
 ${itemsListText}
-💰 *Estimated Payable:*
+💰 *Estimated Payable (Inclusive of all taxes):*
 • Subtotal: ₹${subtotal.toLocaleString('en-IN')}
 ${discountLine}• Pan-India Express Delivery: ${shippingFee === 0 ? 'FREE' : '₹' + shippingFee}
 • *Total Amount: ₹${grandTotal.toLocaleString('en-IN')}*
 
-Please confirm availability and share payment / UPI QR details!`;
+Please confirm stock and share UPI payment details!`;
 
   const waUrl = `https://wa.me/${PANOOJA_WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`;
 
-  // Record inquiry on server (non-blocking)
+  // Record inquiry on server (non-blocking, works without Razorpay keys)
   try {
     fetch('/api/create-order', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
+        order_channel: 'whatsapp',
         receipt: inquiryRef,
         items: cart.map(item => ({ sku: item.sku || item.id, quantity: item.quantity })),
         promo_code: discountInfo.valid ? discountInfo.code : '',
         customer_name: name,
         customer_phone: cleanPhone,
-        customer_email: (panoojaUser && panoojaUser.email) ? panoojaUser.email : '',
-        delivery_address: `${address}, PIN: ${cleanPincode}`
+        customer_email: email,
+        delivery_address: fullAddress
       })
     }).catch(e => console.debug('Inquiry record note:', e));
   } catch (e) {}
 
-  // Open WhatsApp in new tab safely
-  const waWindow = window.open(waUrl, '_blank');
-  if (!waWindow || waWindow.closed || typeof waWindow.closed === 'undefined') {
-    alert('Popup was blocked by your browser. We will open WhatsApp directly.');
-    window.location.href = waUrl;
-    return;
-  }
+  // Open WhatsApp in new tab safely and show confirmation screen
+  try {
+    window.open(waUrl, '_blank', 'noopener,noreferrer');
+  } catch (e) {}
 
   if (!isPageCheckout) closeCheckoutModal();
-  alert(`Your order summary has been transferred to WhatsApp!\n\nReference: #${inquiryRef}\nYour shopping bag remains saved on this device.`);
+  showWhatsappConfirmationScreen({ inquiryRef, total: grandTotal, waUrl });
 }
 
 // =============================================================
 // RAZORPAY STANDARD WEB CHECKOUT INTEGRATION
 // =============================================================
 async function payWithRazorpay(isPageCheckout = false) {
-  const nameEl = isPageCheckout ? document.getElementById('pageCheckoutName') : document.getElementById('checkoutName');
-  const phoneEl = isPageCheckout ? document.getElementById('pageCheckoutPhone') : document.getElementById('checkoutPhone');
-  const addressEl = isPageCheckout ? document.getElementById('pageCheckoutAddress') : document.getElementById('checkoutAddress');
-  const pincodeEl = isPageCheckout ? document.getElementById('pageCheckoutPincode') : document.getElementById('checkoutPincode');
+  if (!isOnlinePaymentsEnabled()) {
+    alert('Online card/UPI checkout is currently unavailable. Please complete your order via WhatsApp.');
+    return;
+  }
+
   const btnEl = isPageCheckout ? document.getElementById('pageCheckoutOnlineBtn') : document.getElementById('checkoutOnlineBtn');
+  const details = readAndValidateCheckoutFields(isPageCheckout);
+  if (!details) return;
 
-  const name = nameEl ? nameEl.value.trim() : '';
-  const phone = phoneEl ? phoneEl.value.trim() : '';
-  const address = addressEl ? addressEl.value.trim() : '';
-  const pincode = pincodeEl ? pincodeEl.value.trim() : '';
-
-  if (!name) {
-    alert('Please enter your full name.');
-    if (nameEl) nameEl.focus();
-    return;
-  }
-  const cleanPhone = phone.replace(/[^0-9]/g, '');
-  if (!cleanPhone || !/^[6-9]\d{9}$/.test(cleanPhone)) {
-    alert('Please enter a valid 10-digit Indian mobile number (starting with 6, 7, 8, or 9).');
-    if (phoneEl) phoneEl.focus();
-    return;
-  }
-  if (!address) {
-    alert('Please enter your complete delivery address.');
-    if (addressEl) addressEl.focus();
-    return;
-  }
-  const cleanPincode = pincode.replace(/[^0-9]/g, '');
-  if (!cleanPincode || !/^[1-9]\d{5}$/.test(cleanPincode)) {
-    alert('Please enter a valid 6-digit Indian delivery PIN code.');
-    if (pincodeEl) pincodeEl.focus();
-    return;
-  }
-
-  if (cart.length === 0) {
-    alert('Your shopping bag is empty.');
-    return;
-  }
+  const { name, cleanPhone, email, fullAddress } = details;
 
   const subtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
   const discountInfo = calculateDiscount(subtotal);
@@ -977,8 +1118,7 @@ async function payWithRazorpay(isPageCheckout = false) {
     }
   }
 
-  const panoojaUser = (typeof window.panoojaAuth !== 'undefined') ? window.panoojaAuth.getUser() : null;
-  const clientEmail = (panoojaUser && panoojaUser.email) ? panoojaUser.email : '';
+  const clientEmail = email;
 
   try {
     // Step 1: Call Backend to Create Order (Server-Side Price Calculation)
@@ -998,7 +1138,7 @@ async function payWithRazorpay(isPageCheckout = false) {
         customer_name: name,
         customer_phone: cleanPhone,
         customer_email: clientEmail,
-        delivery_address: `${address}, PIN: ${cleanPincode}`
+        delivery_address: fullAddress
       })
     });
 
@@ -1019,11 +1159,11 @@ async function payWithRazorpay(isPageCheckout = false) {
       order_id: orderData.order_id,
       prefill: {
         name: name,
-        contact: phone,
+        contact: cleanPhone,
         email: clientEmail || ''
       },
       notes: {
-        address: `${address}, PIN: ${pincode}`
+        address: fullAddress
       },
       theme: {
         color: '#1B69E8'
@@ -1190,6 +1330,7 @@ function showPaymentSuccessDialog(details) {
 
 // DOM Setup
 document.addEventListener('DOMContentLoaded', () => {
+  syncPaymentModeUI();
   updateCartBadge();
   renderCartDrawer();
   fetchLiveOffers();
@@ -1323,9 +1464,9 @@ document.addEventListener('DOMContentLoaded', () => {
       const cleanPrice = parseInt(String(rawPrice).replace(/[^0-9]/g, ''), 10) || 0;
       const product = {
         id: btn.getAttribute('data-id') || ('p_' + Date.now()),
-        title: btn.getAttribute('data-title') || 'PANOOJA Fine Jewellery',
+        title: btn.getAttribute('data-title') || 'PANOOJA Everyday Jewellery',
         price: cleanPrice,
-        img: btn.getAttribute('data-img') || 'hero.jpg',
+        img: btn.getAttribute('data-img') || '/hero.jpg',
         category: btn.getAttribute('data-category') || 'Jewellery'
       };
       addToCart(product);
@@ -1414,3 +1555,4 @@ window.removePromoCode = removePromoCode;
 window.calculateDiscount = calculateDiscount;
 window.getPublicLiveOffers = getPublicLiveOffers;
 window.getFeaturedPublicOffer = getFeaturedPublicOffer;
+window.syncPaymentModeUI = syncPaymentModeUI;

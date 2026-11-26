@@ -7,15 +7,13 @@
   <meta name="description" content="View your PANOOJA shopping bag. Waterproof, anti-tarnish jewellery with free shipping on orders above ₹799." />
   <meta name="theme-color" content="#050505" />
   
-  <link rel="icon" type="image/svg+xml" href="favicon.svg" />
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
   
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,600&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   
-  <link rel="stylesheet" href="styles.css?v=7" />
-  <!-- Razorpay Standard Checkout SDK -->
-  <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+  <link rel="stylesheet" href="/styles.css?v=9" />
   <!-- Google Identity Services (Sign in with Google / Gmail) -->
   <meta name="google-signin-client_id" content="63300831514-5qg0db4qmdnfa5g4vkfqh339e3asriv2.apps.googleusercontent.com" />
   <script src="https://accounts.google.com/gsi/client" async defer></script>
@@ -28,7 +26,7 @@
 
   <header class="site-header" id="top">
     <a class="brand" href="/" aria-label="PANOOJA Home">
-      <img src="logo.png" alt="PANOOJA" class="header-logo" />
+      <img src="/logo.png" alt="PANOOJA" class="header-logo" />
     </a>
 
     <div class="header-actions">
@@ -37,9 +35,9 @@
         <svg id="navAccountIcon" class="account-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
         <span id="navAccountLabel">Sign In</span>
       </button>
-      <a href="cart.html" class="nav-cart" id="navCart" aria-label="View Shopping Cart">
-        <svg class="cart-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path><line x1="3" y1="6" x2="21" y2="6"></line><path d="M16 10a4 4 0 0 1-8 0"></path></svg>
-        <span>CART (<span id="cartCount">0</span>)</span>
+      <a href="/cart" class="nav-cart" id="navCart" aria-label="View Shopping Cart">
+        <svg class="cart-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path><line x1="3" y1="6" x2="21" y2="6"></line><path d="M16 10a4 4 0 0 1-8 0"></path></svg>
+        <span class="nav-cart-text">CART (</span><span id="cartCount">0</span><span class="nav-cart-text">)</span>
       </a>
       <button class="menu-toggle" aria-label="Open menu" aria-expanded="false">
         <span></span><span></span>
@@ -76,7 +74,7 @@
         <p class="cart-shipping-note" style="font-size: 0.85rem; color: var(--muted); margin-bottom: 20px;">Free Express shipping on orders above ₹799 across India.</p>
         <div style="display: flex; gap: 14px;">
           <a href="/#shop" class="button button-secondary" style="flex: 1; text-align: center;">Continue Shopping</a>
-          <a href="checkout.html" class="button button-primary cart-checkout-btn" style="flex: 1; text-align: center;">Proceed to Checkout</a>
+          <a href="/checkout" class="button button-primary cart-checkout-btn" style="flex: 1; text-align: center;">Proceed to Checkout</a>
         </div>
       </div>
       
@@ -90,8 +88,8 @@
 
   <footer>
     <div class="footer-brand">
-      <img src="logo.png" alt="PANOOJA" class="footer-logo" />
-      <p class="footer-desc">Modern anti-tarnish and waterproof jewellery designed for everyday confidence.</p>
+      <img src="/logo.png" alt="PANOOJA" class="footer-logo" />
+      <p class="footer-desc">Modern anti-tarnish and waterproof everyday jewellery designed for everyday confidence.</p>
     </div>
     <div class="footer-links">
       <a href="/#shop">Shop All</a>
@@ -99,14 +97,20 @@
       <a href="/#promise">Our Promise</a>
       <a href="/#faq">FAQ</a>
       <a href="https://www.instagram.com/thepanoojajweles_/" target="_blank" rel="noopener">Instagram</a>
-      <a href="/#newsletter">VIP 10% Off</a>
+      <a href="/#newsletter">VIP Club</a>
     </div>
     <div class="footer-policies">
-       <a href="shipping.html">Shipping Policy</a>
-       <a href="returns.html">7-Day Exchanges</a>
-       <a href="privacy.html">Privacy Policy</a>
-       <a href="terms.html">Terms of Service</a>
-       <a href="contact.html">Concierge Support</a>
+       <a href="/shipping">Shipping Policy</a>
+       <a href="/returns">7-Day Replacement (damaged/defective items)</a>
+       <a href="/privacy">Privacy Policy</a>
+       <a href="/terms">Terms of Service</a>
+       <a href="/contact">Concierge Support</a>
+    </div>
+    <div class="footer-business">
+      <span>Panchanan Nahak, trading as PANOOJA</span> ·
+      <span>Amroli, Surat, Gujarat, 394107</span> ·
+      <span>Support: <a href="mailto:support@panooja.com">support@panooja.com</a></span> ·
+      <a href="/contact#grievance">Grievance Officer</a>
     </div>
     <p class="copyright">© <span id="year"></span> PANOOJA. All rights reserved.</p>
   </footer>
@@ -125,8 +129,9 @@
     </div>
   </div>
 
-  <script src="auth.js?v=1"></script>
-  <script src="cart.js?v=8"></script>
-  <script src="script.js?v=8"></script>
+  <script src="/config.js?v=1"></script>
+  <script src="/auth.js?v=2"></script>
+  <script src="/cart.js?v=9"></script>
+  <script src="/script.js?v=9"></script>
 </body>
 </html>

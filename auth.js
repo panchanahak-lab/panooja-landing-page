@@ -73,19 +73,16 @@
         client_id: DEFAULT_GOOGLE_CLIENT_ID,
         callback: handleGoogleCredentialResponse,
         auto_select: false,
-        cancel_on_tap_outside: true
+        cancel_on_tap_outside: true,
+        use_fedcm_for_prompt: true
       });
 
       // Render button if container exists
       renderGsiButton();
 
-      // Prompt One Tap if guest
+      // Prompt One Tap if guest (FedCM handles display silently without deprecated status callbacks)
       if (!currentUser) {
-        window.google.accounts.id.prompt((notification) => {
-          if (notification.isNotDisplayed && notification.isNotDisplayed()) {
-            console.debug('Google One Tap note:', notification.getNotDisplayedReason());
-          }
-        });
+        window.google.accounts.id.prompt();
       }
     } catch (err) {
       console.log('Google Identity Services note:', err.message);
@@ -310,7 +307,7 @@
           <!-- Saved Shipping Preferences -->
           <div class="profile-shipping-section">
             <h5 class="profile-section-title">Saved Delivery Details</h5>
-            <form id="saveProfileShippingForm" class="profile-shipping-form">
+            <form id="saveProfileShippingForm" class="profile-shipping-form" method="post" onsubmit="return false;">
               <div class="form-group">
                 <label for="profilePhone">Phone / WhatsApp</label>
                 <input type="tel" id="profilePhone" placeholder="10-digit mobile number" value="${currentUser.phone || ''}" pattern="[0-9]{10}" />
@@ -392,7 +389,7 @@
             <span>OR ENTER GMAIL ADDRESS</span>
           </div>
 
-          <form id="directGmailLoginForm" class="direct-gmail-form">
+          <form id="directGmailLoginForm" class="direct-gmail-form" method="post" onsubmit="return false;">
             <div class="form-group">
               <label for="directGmailInput">Your Gmail Address</label>
               <div class="input-with-icon">
@@ -452,14 +449,16 @@
     // 1. Slide-out Drawer Checkout Modal
     const drawerName = document.getElementById('checkoutName');
     const drawerPhone = document.getElementById('checkoutPhone');
-    const drawerAddress = document.getElementById('checkoutAddress');
+    const drawerEmail = document.getElementById('checkoutEmail');
+    const drawerStreet = document.getElementById('checkoutStreet') || document.getElementById('checkoutAddress');
     const drawerPincode = document.getElementById('checkoutPincode');
     const clientStatusEl = document.getElementById('checkoutClientStatus');
 
     if (currentUser) {
       if (drawerName && !drawerName.value) drawerName.value = currentUser.name || '';
       if (drawerPhone && !drawerPhone.value && currentUser.phone) drawerPhone.value = currentUser.phone;
-      if (drawerAddress && !drawerAddress.value && currentUser.address) drawerAddress.value = currentUser.address;
+      if (drawerEmail && !drawerEmail.value && currentUser.email) drawerEmail.value = currentUser.email;
+      if (drawerStreet && !drawerStreet.value && currentUser.address) drawerStreet.value = currentUser.address;
       if (drawerPincode && !drawerPincode.value && currentUser.pincode) drawerPincode.value = currentUser.pincode;
 
       if (clientStatusEl) {
@@ -490,14 +489,16 @@
     // 2. Dedicated checkout.html page
     const pageName = document.getElementById('pageCheckoutName');
     const pagePhone = document.getElementById('pageCheckoutPhone');
-    const pageAddress = document.getElementById('pageCheckoutAddress');
+    const pageEmail = document.getElementById('pageCheckoutEmail');
+    const pageStreet = document.getElementById('pageCheckoutStreet') || document.getElementById('pageCheckoutAddress');
     const pagePincode = document.getElementById('pageCheckoutPincode');
     const pageClientStatus = document.getElementById('pageCheckoutClientStatus');
 
     if (currentUser) {
       if (pageName && !pageName.value) pageName.value = currentUser.name || '';
       if (pagePhone && !pagePhone.value && currentUser.phone) pagePhone.value = currentUser.phone;
-      if (pageAddress && !pageAddress.value && currentUser.address) pageAddress.value = currentUser.address;
+      if (pageEmail && !pageEmail.value && currentUser.email) pageEmail.value = currentUser.email;
+      if (pageStreet && !pageStreet.value && currentUser.address) pageStreet.value = currentUser.address;
       if (pagePincode && !pagePincode.value && currentUser.pincode) pagePincode.value = currentUser.pincode;
 
       if (pageClientStatus) {

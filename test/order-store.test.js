@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { saveOrder, getOrder, updateOrderStatus } from '../api/order-store.js';
+import createOrderHandler from '../api/create-order.js';
 
 test('Order Store - saves and retrieves an order atomically', () => {
   const testOrderId = `test_order_${Date.now()}`;
@@ -13,7 +14,7 @@ test('Order Store - saves and retrieves an order atomically', () => {
     items: [{ id: 'PNJ-001', name: 'Hoop Earrings', price: 1499, quantity: 1 }],
     customer: {
       name: 'Test Customer',
-      phone: '9876543210',
+      phone: '9123456789',
       address: '123 Test Street',
       pincode: '110001'
     }
@@ -67,4 +68,50 @@ test('Order Store - updates status to failed when payment fails', () => {
 
   assert.equal(updated.status, 'Payment Failed');
   assert.equal(updated.failure_reason, 'User cancelled transaction');
+});
+
+test('Create Order API - records WhatsApp inquiry without Razorpay keys', async () => {
+  const prevId = process.env.RAZORPAY_KEY_ID;
+  const prevSecret = process.env.RAZORPAY_KEY_SECRET;
+  delete process.env.RAZORPAY_KEY_ID;
+  delete process.env.RAZORPAY_KEY_SECRET;
+
+  try {
+    const receipt = `INQ-TEST-${Date.now()}`;
+    let statusCode = 0;
+    let jsonBody = null;
+    const req = {
+      method: 'POST',
+      body: {
+        order_channel: 'whatsapp',
+        receipt,
+        items: [{ sku: 'PNJ-001', quantity: 1 }],
+        promo_code: '',
+        customer_name: 'Priya Sharma',
+        customer_phone: '9876543210',
+        customer_email: 'priya@example.com',
+        delivery_address: '12 Rose Villa, Near City Mall, Surat, Gujarat - 395007'
+      }
+    };
+    const res = {
+      setHeader() {},
+      status(code) { statusCode = code; return this; },
+      json(data) { jsonBody = data; return this; },
+      end() { return this; }
+    };
+
+    await createOrderHandler(req, res);
+    assert.equal(statusCode, 200);
+    assert.equal(jsonBody.ok, true);
+    assert.equal(jsonBody.mode, 'whatsapp_inquiry');
+    assert.equal(jsonBody.order_id, receipt);
+
+    const stored = getOrder(receipt);
+    assert.ok(stored);
+    assert.equal(stored.status, 'WhatsApp Inquiry');
+    assert.equal(stored.customer.email, 'priya@example.com');
+  } finally {
+    if (prevId !== undefined) process.env.RAZORPAY_KEY_ID = prevId;
+    if (prevSecret !== undefined) process.env.RAZORPAY_KEY_SECRET = prevSecret;
+  }
 });

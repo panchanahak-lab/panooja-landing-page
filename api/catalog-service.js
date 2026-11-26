@@ -81,6 +81,23 @@ export function parseCSV(text) {
   return rows;
 }
 
+export function normalizeCatalogImageUrl(raw) {
+  if (typeof raw !== 'string') return '';
+  let url = raw.trim();
+  if (!url || url.toLowerCase() === 'none' || url.toLowerCase() === 'null') return '';
+  if (url.includes('/drive/folders/') || url.includes('/folders/') || url.includes('SAMPLE_FILE_ID')) {
+    return '';
+  }
+  const driveMatch = url.match(/\/file\/d\/([a-zA-Z0-9_-]+)/) || url.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+  if (driveMatch && driveMatch[1] && !url.includes('lh3.googleusercontent.com')) {
+    return `https://lh3.googleusercontent.com/d/${driveMatch[1]}`;
+  }
+  if (!/^https?:\/\//i.test(url) && !url.startsWith('/')) {
+    return `/${url.replace(/^\.\//, '')}`;
+  }
+  return url;
+}
+
 export function slugify(text) {
   return String(text || '')
     .toLowerCase()
@@ -134,18 +151,26 @@ export async function fetchCatalog(forceRefresh = false) {
 
       const currentStock = parseInt(String(item['Current Stock (Auto)'] || '10').replace(/[^0-9]/g, ''), 10) || 0;
 
-      const images = [
+      const images = Array.from(new Set([
         item['Direct Image URL (Auto)'],
         item['Direct Image URL 2 (Auto)'],
         item['Direct Image URL 3 (Auto)'],
-        item['Direct Image URL 4 (Auto)']
-      ].filter(url => typeof url === 'string' && url.trim().length > 0);
+        item['Direct Image URL 4 (Auto)'],
+        item['Direct Image URL'],
+        item['Direct Image URL 2'],
+        item['Direct Image URL 3'],
+        item['Direct Image URL 4'],
+        item['Google Drive Share Link'],
+        item['Drive Link 2'],
+        item['Drive Link 3'],
+        item['Drive Link 4']
+      ].map(normalizeCatalogImageUrl).filter(Boolean)));
 
       const rawSlug = (item['SEO URL Slug (Auto)'] || item['SEO URL Slug'] || '').trim().replace(/^\/product\//, '').replace(/^\//, '');
       const productName = item['Product Name'] || sku;
       const slug = rawSlug || slugify(productName || sku);
       const seoTitle = (item['SEO Title (Auto)'] || item['SEO Title'] || '').trim() || `${productName} | Anti-Tarnish Jewellery — PANOOJA`;
-      const seoDescription = (item['SEO Meta Description (Auto)'] || item['SEO Meta Description'] || '').trim() || item['Description'] || 'Modern waterproof and anti-tarnish everyday luxury jewellery by PANOOJA.';
+      const seoDescription = (item['SEO Meta Description (Auto)'] || item['SEO Meta Description'] || '').trim() || item['Description'] || 'Modern waterproof and anti-tarnish everyday jewellery by PANOOJA.';
       const seoKeywords = (item['SEO Keywords (Auto)'] || item['SEO Keywords'] || '').trim();
       const imageAlt = (item['Image Alt Text (Auto)'] || item['Image Alt Text'] || '').trim() || `${productName} — Anti-Tarnish Waterproof Jewellery by PANOOJA`;
 

@@ -30,9 +30,12 @@ export default async function handler(req, res) {
       if (match) slug = match[1];
     }
   }
-  slug = (slug || '').trim().toLowerCase();
+  slug = decodeURIComponent(slug || '').trim().toLowerCase();
 
-  const indexPath = path.join(ROOT_DIR, 'index.html');
+  let indexPath = path.join(ROOT_DIR, 'index.html');
+  if (!fs.existsSync(indexPath)) {
+    indexPath = path.join(process.cwd(), 'index.html');
+  }
   let html = '';
   try {
     html = fs.readFileSync(indexPath, 'utf-8');
@@ -53,10 +56,18 @@ export default async function handler(req, res) {
   }
 
   const productUrl = `https://www.panooja.com/product/${product.slug}`;
-  const firstImage = (product.images && product.images.length > 0) ? product.images[0] : (product.image || 'https://www.panooja.com/logo.png');
+  const toAbsoluteImgUrl = (u) => {
+    if (!u) return 'https://www.panooja.com/logo.png';
+    return /^https?:\/\//i.test(u) ? u : `https://www.panooja.com/${u.replace(/^\//, '')}`;
+  };
+  const absoluteImages = (product.images && product.images.length > 0)
+    ? product.images.map(toAbsoluteImgUrl)
+    : [toAbsoluteImgUrl(product.image)];
+  const firstImage = absoluteImages[0] || 'https://www.panooja.com/og-image.jpg';
   const seoTitle = product.seoTitle || `${product.name} | Anti-Tarnish Jewellery — PANOOJA`;
-  const seoDesc = product.seoDescription || product.description || 'Shop waterproof, anti-tarnish jewellery handcrafted in 316L stainless steel by PANOOJA.';
-  const seoKeywords = product.seoKeywords || 'anti tarnish jewellery India, waterproof jewellery, everyday gold jewellery';
+  const seoDesc = product.seoDescription || product.description || 'Shop waterproof, anti-tarnish everyday jewellery made with 316L stainless steel by PANOOJA.';
+  const numericPrice = Number(product.price) || 0;
+  const shippingFee = numericPrice >= 799 ? 0 : 79;
 
   const productSchema = {
     '@context': 'https://schema.org',
@@ -66,24 +77,59 @@ export default async function handler(req, res) {
     'name': product.name,
     'sku': product.sku,
     'description': seoDesc,
-    'image': product.images && product.images.length > 0 ? product.images : [firstImage],
+    'image': absoluteImages,
     'category': product.category,
     'brand': {
       '@type': 'Brand',
       'name': 'PANOOJA'
     },
-    'material': '316L Surgical Stainless Steel, 18K Gold PVD Plating',
     'offers': {
       '@type': 'Offer',
       'url': productUrl,
       'priceCurrency': 'INR',
-      'price': product.price,
+      'price': numericPrice,
       'priceValidUntil': '2027-12-31',
       'itemCondition': 'https://schema.org/NewCondition',
       'availability': product.isOutOfStock ? 'https://schema.org/OutOfStock' : 'https://schema.org/InStock',
       'seller': {
         '@type': 'Organization',
         'name': 'PANOOJA'
+      },
+      'shippingDetails': {
+        '@type': 'OfferShippingDetails',
+        'shippingRate': {
+          '@type': 'MonetaryAmount',
+          'value': shippingFee,
+          'currency': 'INR'
+        },
+        'shippingDestination': {
+          '@type': 'DefinedRegion',
+          'addressCountry': 'IN'
+        },
+        'deliveryTime': {
+          '@type': 'ShippingDeliveryTime',
+          'handlingTime': {
+            '@type': 'QuantitativeValue',
+            'minValue': 0,
+            'maxValue': 1,
+            'unitCode': 'DAY'
+          },
+          'transitTime': {
+            '@type': 'QuantitativeValue',
+            'minValue': 2,
+            'maxValue': 5,
+            'unitCode': 'DAY'
+          }
+        }
+      },
+      'hasMerchantReturnPolicy': {
+        '@type': 'MerchantReturnPolicy',
+        'applicableCountry': 'IN',
+        'returnPolicyCategory': 'https://schema.org/MerchantReturnFiniteReturnWindow',
+        'merchantReturnDays': 7,
+        'returnMethod': 'https://schema.org/ReturnByMail',
+        'returnFees': 'https://schema.org/FreeReturn',
+        'description': '7-day replacement for damaged, defective or wrong items (uncut unboxing video required).'
       }
     }
   };
@@ -94,8 +140,10 @@ export default async function handler(req, res) {
   // Replace Meta Description
   html = html.replace(/<meta\s+name=["']description["']\s+content=["'][^"']*["']/i, `<meta name="description" content="${escapeXml(seoDesc)}"`);
 
-  // Replace Meta Keywords
-  html = html.replace(/<meta\s+name=["']keywords["']\s+content=["'][^"']*["']/i, `<meta name="keywords" content="${escapeXml(seoKeywords)}"`);
+  // Ensure product page has its own <h1> (product name) & visible price matching structured data
+  html = html.replace(/<h1\s+id=["']heroHeadline["'][^>]*>([\s\S]*?)<\/h1>/i, '<h2 id="heroHeadline">$1</h2>');
+  html = html.replace(/<h2\s+id=["']quickViewTitle["']\s+class=["']quick-view-title["'][^>]*>[\s\S]*?<\/h2>/i, `<h1 id="quickViewTitle" class="quick-view-title">${escapeXml(product.name)}</h1>`);
+  html = html.replace(/<span\s+class=["']product-final-price["']\s+id=["']quickViewPrice["'][^>]*>[\s\S]*?<\/span>/i, `<span class="product-final-price" id="quickViewPrice">₹${numericPrice.toLocaleString('en-IN')}</span>`);
 
   // Replace Canonical Link
   html = html.replace(/<link\s+rel=["']canonical["']\s+href=["'][^"']*["']/i, `<link rel="canonical" href="${escapeXml(productUrl)}"`);

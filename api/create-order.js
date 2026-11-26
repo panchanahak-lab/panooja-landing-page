@@ -20,17 +20,6 @@ export default async function handler(req, res) {
     return res.status(405).json({ ok: false, error: 'Method Not Allowed' });
   }
 
-  const key_id = process.env.RAZORPAY_KEY_ID;
-  const key_secret = process.env.RAZORPAY_KEY_SECRET;
-
-  if (!key_id || !key_secret) {
-    console.error('Razorpay credentials missing from environment variables');
-    return res.status(401).json({
-      ok: false,
-      error: 'Authentication failed: Razorpay credentials missing on server.'
-    });
-  }
-
   try {
     // Parse body safely (supports parsed req.body or stringified JSON)
     let body = req.body;
@@ -42,6 +31,18 @@ export default async function handler(req, res) {
       }
     }
     body = body || {};
+
+    const isWhatsappInquiry = body.order_channel === 'whatsapp' || body.inquiry_only === true;
+    const key_id = process.env.RAZORPAY_KEY_ID;
+    const key_secret = process.env.RAZORPAY_KEY_SECRET;
+
+    if (!isWhatsappInquiry && (!key_id || !key_secret)) {
+      console.error('Razorpay credentials missing from environment variables');
+      return res.status(401).json({
+        ok: false,
+        error: 'Authentication failed: Razorpay credentials missing on server.'
+      });
+    }
 
     let amountInPaise;
     let calculation = null;
@@ -77,16 +78,50 @@ export default async function handler(req, res) {
 
     const currency = 'INR';
     const receipt = body.receipt || `rcpt_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
+    const customerName = (body.customer_name || '').trim();
+    const customerPhone = (body.customer_phone || '').trim();
+    const customerEmail = (body.customer_email || '').trim();
+    const deliveryAddress = (body.delivery_address || '').trim();
+
+    // Save WhatsApp inquiry cleanly without requiring Razorpay keys or API call
+    if (isWhatsappInquiry) {
+      saveOrder({
+        order_id: receipt,
+        receipt,
+        amount: amountInPaise,
+        currency,
+        status: 'WhatsApp Inquiry',
+        customer: {
+          name: customerName,
+          phone: customerPhone,
+          email: customerEmail,
+          address: deliveryAddress
+        },
+        items: calculation ? calculation.items : [],
+        subtotal: calculation ? calculation.subtotal : Math.round(amountInPaise / 100),
+        discount: calculation ? calculation.discount : 0,
+        promo_code: calculation ? calculation.promoCode : (body.promo_code || '')
+      });
+
+      return res.status(200).json({
+        ok: true,
+        mode: 'whatsapp_inquiry',
+        order_id: receipt,
+        amount: amountInPaise,
+        currency,
+        calculation: calculation ? {
+          subtotal: calculation.subtotal,
+          discount: calculation.discount,
+          shippingFee: calculation.shippingFee,
+          grandTotal: calculation.grandTotal
+        } : null
+      });
+    }
 
     const razorpay = new Razorpay({
       key_id,
       key_secret
     });
-
-    const customerName = (body.customer_name || '').trim();
-    const customerPhone = (body.customer_phone || '').trim();
-    const customerEmail = (body.customer_email || '').trim();
-    const deliveryAddress = (body.delivery_address || '').trim();
 
     const options = {
       amount: amountInPaise,

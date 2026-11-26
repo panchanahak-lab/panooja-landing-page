@@ -7,15 +7,13 @@
   <meta name="description" content="Complete your order for PANOOJA waterproof anti-tarnish jewellery. Express pan-India delivery." />
   <meta name="theme-color" content="#050505" />
   
-  <link rel="icon" type="image/svg+xml" href="favicon.svg" />
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
   
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,600&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   
-  <link rel="stylesheet" href="styles.css?v=7" />
-  <!-- Razorpay Standard Checkout SDK -->
-  <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+  <link rel="stylesheet" href="/styles.css?v=9" />
   <!-- Google Identity Services (Sign in with Google / Gmail) -->
   <meta name="google-signin-client_id" content="63300831514-5qg0db4qmdnfa5g4vkfqh339e3asriv2.apps.googleusercontent.com" />
   <script src="https://accounts.google.com/gsi/client" async defer></script>
@@ -28,7 +26,7 @@
 
   <header class="site-header" id="top">
     <a class="brand" href="/" aria-label="PANOOJA Home">
-      <img src="logo.png" alt="PANOOJA" class="header-logo" />
+      <img src="/logo.png" alt="PANOOJA" class="header-logo" />
     </a>
 
     <div class="header-actions">
@@ -37,9 +35,9 @@
         <svg id="navAccountIcon" class="account-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
         <span id="navAccountLabel">Sign In</span>
       </button>
-      <a href="cart.html" class="nav-cart" id="navCart" aria-label="View Shopping Cart">
-        <svg class="cart-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path><line x1="3" y1="6" x2="21" y2="6"></line><path d="M16 10a4 4 0 0 1-8 0"></path></svg>
-        <span>CART (<span id="cartCount">0</span>)</span>
+      <a href="/cart" class="nav-cart" id="navCart" aria-label="View Shopping Cart">
+        <svg class="cart-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path><line x1="3" y1="6" x2="21" y2="6"></line><path d="M16 10a4 4 0 0 1-8 0"></path></svg>
+        <span class="nav-cart-text">CART (</span><span id="cartCount">0</span><span class="nav-cart-text">)</span>
       </a>
       <button class="menu-toggle" aria-label="Open menu" aria-expanded="false">
         <span></span><span></span>
@@ -66,30 +64,89 @@
       </div>
       
       <div class="checkout-container reveal">
-        <form id="pageCheckoutForm" class="waitlist-form" style="display: flex; flex-direction: column; gap: 16px;">
+        <form id="pageCheckoutForm" class="waitlist-form" method="post" onsubmit="return false;" style="display: flex; flex-direction: column; gap: 16px;">
           <!-- Client Login & Autofill Status -->
           <div id="pageCheckoutClientStatus"></div>
 
           <h3 style="color: var(--black); margin-bottom: 8px; font-family: var(--font-serif); font-size: 1.6rem;">Shipping Details</h3>
           
           <div style="display: flex; flex-direction: column; gap: 6px;">
-            <label style="font-size: 0.82rem; font-weight: 600; color: var(--black);">Full Name *</label>
-            <input type="text" id="pageCheckoutName" name="name" placeholder="e.g. Priya Sharma" required>
+            <label for="pageCheckoutName" style="font-size: 0.82rem; font-weight: 600; color: var(--black);">Full Name *</label>
+            <input type="text" id="pageCheckoutName" name="name" placeholder="e.g. Priya Sharma" autocomplete="name" required>
           </div>
 
           <div style="display: flex; flex-direction: column; gap: 6px;">
-            <label style="font-size: 0.82rem; font-weight: 600; color: var(--black);">WhatsApp Phone Number *</label>
-            <input type="tel" id="pageCheckoutPhone" name="phone" placeholder="10-digit mobile number" pattern="[0-9]{10}" required>
+            <label for="pageCheckoutPhone" style="font-size: 0.82rem; font-weight: 600; color: var(--black);">WhatsApp Phone Number *</label>
+            <input type="tel" id="pageCheckoutPhone" name="phone" placeholder="10-digit mobile number" pattern="[0-9]{10}" autocomplete="tel" required>
           </div>
 
           <div style="display: flex; flex-direction: column; gap: 6px;">
-            <label style="font-size: 0.82rem; font-weight: 600; color: var(--black);">Delivery Address *</label>
-            <textarea id="pageCheckoutAddress" name="address" placeholder="Flat/House No., Street, Landmark, City, State" required style="width: 100%; min-height: 90px; padding: 12px 16px; border: 1px solid var(--light-grey); border-radius: var(--radius-sm); font-family: var(--font-sans);"></textarea>
+            <label for="pageCheckoutEmail" style="font-size: 0.82rem; font-weight: 600; color: var(--black);">Email (for order updates)</label>
+            <input type="email" id="pageCheckoutEmail" name="email" placeholder="Optional — e.g. priya@example.com" autocomplete="email">
           </div>
 
           <div style="display: flex; flex-direction: column; gap: 6px;">
-            <label style="font-size: 0.82rem; font-weight: 600; color: var(--black);">Pincode *</label>
-            <input type="text" id="pageCheckoutPincode" name="pincode" placeholder="6-digit pincode" pattern="[0-9]{6}" required>
+            <label for="pageCheckoutStreet" style="font-size: 0.82rem; font-weight: 600; color: var(--black);">House/Flat &amp; Street *</label>
+            <input type="text" id="pageCheckoutStreet" name="street" placeholder="Flat/House No., Building, Street, Area" autocomplete="street-address" required>
+          </div>
+
+          <div style="display: flex; flex-direction: column; gap: 6px;">
+            <label for="pageCheckoutLandmark" style="font-size: 0.82rem; font-weight: 600; color: var(--black);">Landmark (optional)</label>
+            <input type="text" id="pageCheckoutLandmark" name="landmark" placeholder="Near temple, school, or main road">
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+            <div style="display: flex; flex-direction: column; gap: 6px;">
+              <label for="pageCheckoutCity" style="font-size: 0.82rem; font-weight: 600; color: var(--black);">City *</label>
+              <input type="text" id="pageCheckoutCity" name="city" placeholder="e.g. Surat" autocomplete="address-level2" required>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 6px;">
+              <label for="pageCheckoutPincode" style="font-size: 0.82rem; font-weight: 600; color: var(--black);">Pincode *</label>
+              <input type="text" id="pageCheckoutPincode" name="pincode" placeholder="6-digit pincode" pattern="[0-9]{6}" autocomplete="postal-code" required>
+            </div>
+          </div>
+
+          <div style="display: flex; flex-direction: column; gap: 6px;">
+            <label for="pageCheckoutState" style="font-size: 0.82rem; font-weight: 600; color: var(--black);">State *</label>
+            <select id="pageCheckoutState" name="state" autocomplete="address-level1" required style="width: 100%; padding: 12px 16px; border: 1px solid var(--light-grey); border-radius: var(--radius-sm); font-family: var(--font-sans); background: var(--soft-cool-white); color: var(--charcoal);">
+              <option value="">Select State / UT</option>
+              <option value="Andaman and Nicobar Islands">Andaman and Nicobar Islands</option>
+              <option value="Andhra Pradesh">Andhra Pradesh</option>
+              <option value="Arunachal Pradesh">Arunachal Pradesh</option>
+              <option value="Assam">Assam</option>
+              <option value="Bihar">Bihar</option>
+              <option value="Chandigarh">Chandigarh</option>
+              <option value="Chhattisgarh">Chhattisgarh</option>
+              <option value="Dadra and Nagar Haveli and Daman and Diu">Dadra and Nagar Haveli and Daman and Diu</option>
+              <option value="Delhi">Delhi</option>
+              <option value="Goa">Goa</option>
+              <option value="Gujarat">Gujarat</option>
+              <option value="Haryana">Haryana</option>
+              <option value="Himachal Pradesh">Himachal Pradesh</option>
+              <option value="Jammu and Kashmir">Jammu and Kashmir</option>
+              <option value="Jharkhand">Jharkhand</option>
+              <option value="Karnataka">Karnataka</option>
+              <option value="Kerala">Kerala</option>
+              <option value="Ladakh">Ladakh</option>
+              <option value="Lakshadweep">Lakshadweep</option>
+              <option value="Madhya Pradesh">Madhya Pradesh</option>
+              <option value="Maharashtra">Maharashtra</option>
+              <option value="Manipur">Manipur</option>
+              <option value="Meghalaya">Meghalaya</option>
+              <option value="Mizoram">Mizoram</option>
+              <option value="Nagaland">Nagaland</option>
+              <option value="Odisha">Odisha</option>
+              <option value="Puducherry">Puducherry</option>
+              <option value="Punjab">Punjab</option>
+              <option value="Rajasthan">Rajasthan</option>
+              <option value="Sikkim">Sikkim</option>
+              <option value="Tamil Nadu">Tamil Nadu</option>
+              <option value="Telangana">Telangana</option>
+              <option value="Tripura">Tripura</option>
+              <option value="Uttar Pradesh">Uttar Pradesh</option>
+              <option value="Uttarakhand">Uttarakhand</option>
+              <option value="West Bengal">West Bengal</option>
+            </select>
           </div>
           
           <!-- Standalone Checkout Coupon Code Box -->
@@ -127,18 +184,20 @@
               <span>Total Payable:</span>
               <span id="pageCheckoutTotal">₹0</span>
             </div>
-            <p style="font-size: 0.78rem; color: var(--muted); margin: 4px 0 0;">Includes taxes &amp; Free Express pan-India delivery (orders ₹799+).</p>
+            <p style="font-size: 0.78rem; color: var(--muted); margin: 4px 0 0;">Inclusive of all taxes. Free Express pan-India delivery on orders ₹799+.</p>
+            <p style="font-size: 0.76rem; color: var(--muted); margin: 6px 0 0;">Replacement within 7 days for damaged, defective or wrong items. An uncut unboxing video is required.</p>
           </div>
           
-          <div style="display: flex; flex-direction: column; gap: 10px; margin-top: 12px;">
+          <div id="pageCheckoutActionsWrap" style="display: flex; flex-direction: column; gap: 10px; margin-top: 12px;">
             <button class="button button-whatsapp" type="button" id="pageCheckoutWhatsappBtn" style="width: 100%;">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12.031 6.172c-3.181 0-5.767 2.586-5.768 5.766-.001 1.298.38 2.27 1.019 3.287l-.711 2.598 2.669-.699c.969.54 1.771.82 2.791.82 3.182 0 5.768-2.587 5.768-5.766 0-3.18-2.586-5.766-5.768-5.766zm9.969 5.766c0 5.514-4.486 10-10 10-1.802 0-3.489-.479-4.945-1.312l-5.055 1.376 1.396-4.935c-.917-1.503-1.446-3.267-1.446-5.129 0-5.514 4.486-10 10-10s10 4.486 10 10z"/></svg>
               Order via WhatsApp (Instant Confirmation)
             </button>
-            <button class="button button-primary" type="button" id="pageCheckoutOnlineBtn" style="width: 100%;">
+            <button class="button button-primary" type="button" id="pageCheckoutOnlineBtn" style="width: 100%; display: none;">
               Pay Online (UPI / Cards / NetBanking via Razorpay)
             </button>
           </div>
+          <p id="pageCheckoutPaymentNote" style="text-align: center; font-size: 0.78rem; color: var(--muted); margin: 4px 0 0;">Pay by UPI after we confirm your order on WhatsApp</p>
           <p id="pageCheckoutMessage" style="text-align: center; font-size: 0.85rem; color: var(--royal-blue); margin: 6px 0 0;"></p>
         </form>
       </div>
@@ -147,8 +206,8 @@
 
   <footer>
     <div class="footer-brand">
-      <img src="logo.png" alt="PANOOJA" class="footer-logo" />
-      <p class="footer-desc">Modern anti-tarnish and waterproof jewellery designed for everyday confidence.</p>
+      <img src="/logo.png" alt="PANOOJA" class="footer-logo" />
+      <p class="footer-desc">Modern anti-tarnish and waterproof everyday jewellery designed for everyday confidence.</p>
     </div>
     <div class="footer-links">
       <a href="/#shop">Shop All</a>
@@ -156,20 +215,27 @@
       <a href="/#promise">Our Promise</a>
       <a href="/#faq">FAQ</a>
       <a href="https://www.instagram.com/thepanoojajweles_/" target="_blank" rel="noopener">Instagram</a>
-      <a href="/#newsletter">VIP 10% Off</a>
+      <a href="/#newsletter">VIP Club</a>
     </div>
     <div class="footer-policies">
-       <a href="shipping.html">Shipping Policy</a>
-       <a href="returns.html">7-Day Exchanges</a>
-       <a href="privacy.html">Privacy Policy</a>
-       <a href="terms.html">Terms of Service</a>
-       <a href="contact.html">Concierge Support</a>
+       <a href="/shipping">Shipping Policy</a>
+       <a href="/returns">7-Day Replacement (damaged/defective items)</a>
+       <a href="/privacy">Privacy Policy</a>
+       <a href="/terms">Terms of Service</a>
+       <a href="/contact">Concierge Support</a>
+    </div>
+    <div class="footer-business">
+      <span>Panchanan Nahak, trading as PANOOJA</span> ·
+      <span>Amroli, Surat, Gujarat, 394107</span> ·
+      <span>Support: <a href="mailto:support@panooja.com">support@panooja.com</a></span> ·
+      <a href="/contact#grievance">Grievance Officer</a>
     </div>
     <p class="copyright">© <span id="year"></span> PANOOJA. All rights reserved.</p>
   </footer>
 
-  <script src="cart.js?v=8"></script>
-  <script src="script.js?v=8"></script>
+  <script src="/config.js?v=1"></script>
+  <script src="/cart.js?v=9"></script>
+  <script src="/script.js?v=9"></script>
   <script>
     // Wire up page-level checkout form using shared cart.js coupon & pricing engine
     document.addEventListener('DOMContentLoaded', () => {
@@ -209,6 +275,6 @@
     </div>
   </div>
 
-  <script src="auth.js?v=1"></script>
+  <script src="/auth.js?v=2"></script>
 </body>
 </html>

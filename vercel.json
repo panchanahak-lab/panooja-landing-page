@@ -1,13 +1,33 @@
 {
   "cleanUrls": true,
   "trailingSlash": false,
+  "functions": {
+    "api/product-seo.js": {
+      "includeFiles": "index.html"
+    }
+  },
   "rewrites": [
+    {
+      "source": "/sitemap.xml",
+      "destination": "/api/sitemap"
+    },
     {
       "source": "/product/:slug",
       "destination": "/api/product-seo?slug=:slug"
     }
   ],
   "redirects": [
+    {
+      "source": "/:path*",
+      "has": [
+        {
+          "type": "host",
+          "value": "panooja.com"
+        }
+      ],
+      "destination": "https://www.panooja.com/:path*",
+      "permanent": true
+    },
     {
       "source": "/index.html",
       "destination": "/",

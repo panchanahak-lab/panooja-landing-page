@@ -10,6 +10,7 @@ import verifyPaymentHandler from './api/verify-payment.js';
 import earlyAccessHandler from './api/early-access.js';
 import googleAuthHandler from './api/auth/google.js';
 import productSeoHandler from './api/product-seo.js';
+import sitemapHandler from './api/sitemap.js';
 
 dotenv.config();
 
@@ -133,6 +134,9 @@ const server = http.createServer((req, res) => {
   if (pathname === '/api/product-seo') {
     return adaptReqRes(req, res, productSeoHandler);
   }
+  if (pathname === '/sitemap.xml' || pathname === '/api/sitemap') {
+    return adaptReqRes(req, res, sitemapHandler);
+  }
 
   // Security Check: Block sensitive files (.env, .git, data, node_modules)
   const normalizedPath = path.normalize(pathname).replace(/^(\.\.[\/\\])+/, '');
@@ -165,7 +169,15 @@ const server = http.createServer((req, res) => {
 
   if (reqPath === '/' || reqPath === '') reqPath = '/index.html';
 
-  const filePath = path.resolve(__dirname, '.' + reqPath);
+  let filePath = path.resolve(__dirname, '.' + reqPath);
+
+  // Clean URL support (matches Vercel cleanUrls: true): /shipping -> shipping.html
+  if (!path.extname(filePath)) {
+    const htmlCandidate = filePath + '.html';
+    if (fs.existsSync(htmlCandidate) && fs.statSync(htmlCandidate).isFile()) {
+      filePath = htmlCandidate;
+    }
+  }
 
   // Path Traversal containment check
   if (!filePath.startsWith(__dirname)) {
@@ -180,8 +192,19 @@ const server = http.createServer((req, res) => {
   fs.readFile(filePath, (err, content) => {
     if (err) {
       if (err.code === 'ENOENT') {
-        res.writeHead(404, { 'Content-Type': 'text/plain' });
-        res.end('404 Not Found');
+        const notFoundPath = path.join(__dirname, '404.html');
+        fs.readFile(notFoundPath, (err404, html404) => {
+          if (!err404 && html404) {
+            res.writeHead(404, {
+              'Content-Type': 'text/html; charset=utf-8',
+              'Cache-Control': 'no-cache, no-store, must-revalidate'
+            });
+            res.end(html404);
+          } else {
+            res.writeHead(404, { 'Content-Type': 'text/plain' });
+            res.end('404 Not Found');
+          }
+        });
       } else {
         res.writeHead(500, { 'Content-Type': 'text/plain' });
         res.end('500 Server Error: ' + err.code);
