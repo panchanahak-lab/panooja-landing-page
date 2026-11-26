@@ -10,35 +10,97 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/styles.css?v=9" />
+  <link rel="stylesheet" href="/styles.css?v=10" />
+  <meta name="google-signin-client_id" content="63300831514-5qg0db4qmdnfa5g4vkfqh339e3asriv2.apps.googleusercontent.com" />
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
 <body>
-  <div class="announcement">
-    <span class="announcement-dot"></span> FREE SHIPPING ON ORDERS ABOVE ₹799 · EXPRESS PAN-INDIA DISPATCH
+  <div class="announcement" id="liveAnnouncementBar" data-live-offers="true">
+    <div class="announcement-center">
+      <button type="button" class="announcement-arrow" id="annPrevBtn" aria-label="Previous offer">&#8249;</button>
+      <div class="announcement-slide" id="announcementSlide" aria-live="polite">
+        <span class="ann-desktop">Free shipping on orders above ₹799</span>
+        <span class="ann-mobile">Free shipping above ₹799</span>
+      </div>
+      <button type="button" class="announcement-arrow" id="annNextBtn" aria-label="Next offer">&#8250;</button>
+    </div>
+    <a href="https://wa.me/917984528870?text=Hi%20PANOOJA!%20I%20need%20help%20with%20an%20order." class="announcement-wa" id="annWaLink" target="_blank" rel="noopener noreferrer">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12.031 6.172c-3.181 0-5.767 2.586-5.768 5.766-.001 1.298.38 2.27 1.019 3.287l-.711 2.598 2.669-.699c.969.54 1.771.82 2.791.82 3.182 0 5.768-2.587 5.768-5.766 0-3.18-2.586-5.766-5.768-5.766zm9.969 5.766c0 5.514-4.486 10-10 10-1.802 0-3.489-.479-4.945-1.312l-5.055 1.376 1.396-4.935c-.917-1.503-1.446-3.267-1.446-5.129 0-5.514 4.486-10 10-10s10 4.486 10 10z"/></svg>
+      <span>WhatsApp help · Mon–Sat</span>
+    </a>
   </div>
 
   <header class="site-header" id="top">
+    <button type="button" class="menu-toggle" aria-label="Open menu" aria-expanded="false" aria-controls="mobileMenuOverlay">
+      <span></span><span></span>
+    </button>
+
+    <nav class="nav-links" id="desktopNavLinks" aria-label="Primary navigation">
+      <a href="/#shop" data-nav-section="shop">Shop All</a>
+      <span class="nav-live-categories" id="navLiveCategories"></span>
+      <a href="/#story" data-nav-section="story">Our Story</a>
+    </nav>
+
     <a class="brand" href="/" aria-label="PANOOJA Home">
       <img src="/logo.png" alt="PANOOJA" class="header-logo" />
     </a>
+
     <div class="header-actions">
-      <a href="/cart" class="nav-cart" id="navCart" aria-label="View Shopping Cart">
-        <svg class="cart-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path><line x1="3" y1="6" x2="21" y2="6"></line><path d="M16 10a4 4 0 0 1-8 0"></path></svg>
-        <span class="nav-cart-text">CART</span>
-      </a>
-      <button class="menu-toggle" aria-label="Open menu" aria-expanded="false">
-        <span></span><span></span>
+      <a href="/#faq" class="nav-help-link" data-nav-section="faq">Help</a>
+      <button class="nav-account" id="navAccountBtn" type="button" aria-label="Sign in" title="Sign in with Gmail">
+        <span id="navAccountAvatar" style="display: none;"></span>
+        <svg id="navAccountIcon" class="account-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+        <span id="navAccountLabel" class="sr-only">Sign In</span>
       </button>
+      <a href="/cart" class="nav-cart" id="navCart" aria-label="Open bag, 0 items">
+        <svg class="cart-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path><line x1="3" y1="6" x2="21" y2="6"></line><path d="M16 10a4 4 0 0 1-8 0"></path></svg>
+        <span id="cartCount" class="cart-badge" style="display: none;">0</span>
+      </a>
     </div>
-    <nav class="nav-links" aria-label="Primary navigation">
-      <a href="/#shop">Shop All</a>
-      <a href="/#collections">Categories</a>
-      <a href="/#story">Our Story</a>
-      <a href="/#promise">Why PANOOJA</a>
-      <a href="/#faq">FAQ</a>
-      <a class="nav-cta" href="/#shop">Shop Now</a>
-    </nav>
   </header>
+
+  <div class="mobile-menu-overlay" id="mobileMenuOverlay" role="dialog" aria-modal="true" aria-label="Mobile menu" aria-hidden="true">
+    <div class="mobile-menu-topbar">
+      <button type="button" class="mobile-menu-close" id="mobileMenuCloseBtn" aria-label="Close menu">&times;</button>
+      <a class="mobile-menu-brand" href="/" aria-label="PANOOJA Home">
+        <img src="/logo.png" alt="PANOOJA" class="header-logo" />
+      </a>
+      <a href="/cart" class="mobile-menu-bag" id="mobileMenuBagBtn" aria-label="Open bag, 0 items">
+        <svg class="cart-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path><line x1="3" y1="6" x2="21" y2="6"></line><path d="M16 10a4 4 0 0 1-8 0"></path></svg>
+        <span class="cart-badge js-cart-badge-mirror" style="display: none;">0</span>
+      </a>
+    </div>
+    <div class="mobile-menu-scroll">
+      <nav class="mobile-menu-primary" aria-label="Mobile primary navigation">
+        <a href="/#shop" class="mobile-menu-link">Shop All</a>
+        <div class="mobile-live-categories" id="mobileLiveCategories"></div>
+        <a href="/#story" class="mobile-menu-link">Our Story</a>
+        <a href="/#promise" class="mobile-menu-link">Why PANOOJA</a>
+        <a href="/#faq" class="mobile-menu-link">FAQ</a>
+      </nav>
+      <div class="mobile-menu-utilities">
+        <button type="button" class="mobile-utility-row" id="mobileMenuAccountBtn">
+          <span class="mobile-utility-icon" id="mobileAccountAvatarSlot">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+          </span>
+          <span id="mobileAccountLabel">Sign in</span>
+        </button>
+        <a href="https://wa.me/917984528870?text=Hi%20PANOOJA!%20I%20have%20a%20question." target="_blank" rel="noopener noreferrer" class="mobile-utility-row">
+          <span class="mobile-utility-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12.031 6.172c-3.181 0-5.767 2.586-5.768 5.766-.001 1.298.38 2.27 1.019 3.287l-.711 2.598 2.669-.699c.969.54 1.771.82 2.791.82 3.182 0 5.768-2.587 5.768-5.766 0-3.18-2.586-5.766-5.768-5.766zm9.969 5.766c0 5.514-4.486 10-10 10-1.802 0-3.489-.479-4.945-1.312l-5.055 1.376 1.396-4.935c-.917-1.503-1.446-3.267-1.446-5.129 0-5.514 4.486-10 10-10s10 4.486 10 10z"/></svg>
+          </span>
+          <span>WhatsApp help · Mon–Sat, 10–7</span>
+        </a>
+        <a href="https://www.instagram.com/thepanoojajweles_/" target="_blank" rel="noopener noreferrer" class="mobile-utility-row">
+          <span class="mobile-utility-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line></svg>
+          </span>
+          <span>Instagram</span>
+        </a>
+      </div>
+      <div class="mobile-menu-footer">Free shipping on orders above ₹799</div>
+    </div>
+  </div>
 
   <main>
     <div class="policy-page">
@@ -99,15 +161,26 @@
        <a href="/terms">Terms of Service</a>
     </div>
     <div class="footer-business">
-      <span>PANOOJA</span> ·
-      <span>Amroli, Surat, Gujarat, 394107</span> ·
-      <span>Support: <a href="mailto:support@panooja.com">support@panooja.com</a></span> ·
+      <span data-config-field="LEGAL_NAME">PANOOJA</span> ·
+      <span data-config-field="BUSINESS_ADDRESS">Amroli, Surat, Gujarat, 394107</span> ·
+      <span>Support: <a href="mailto:support@panooja.com" data-config-field="SUPPORT_EMAIL">support@panooja.com</a></span> ·
       <a href="/contact#grievance">Grievance Officer</a>
     </div>
     <p class="copyright">© <span id="year"></span> PANOOJA. All rights reserved.</p>
   </footer>
 
-  <script src="/config.js?v=1"></script>
-  <script src="/script.js?v=9"></script>
+  <div class="auth-modal-backdrop" id="authModalBackdrop"></div>
+  <div class="auth-modal" id="authModal" role="dialog" aria-modal="true" aria-labelledby="authModalTitle">
+    <div class="auth-modal-header">
+      <h3 id="authModalTitle">Client Portal</h3>
+      <button class="auth-modal-close" id="closeAuthModal" aria-label="Close client access">&times;</button>
+    </div>
+    <div class="auth-modal-body" id="authModalDynamicContent"></div>
+  </div>
+
+  <script src="/config.js?v=2"></script>
+  <script src="/auth.js?v=3"></script>
+  <script src="/cart.js?v=10"></script>
+  <script src="/script.js?v=10"></script>
 </body>
 </html>

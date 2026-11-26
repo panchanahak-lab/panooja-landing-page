@@ -370,7 +370,7 @@ export function parseOffersFromCSV(csvData) {
     });
 
     const code = (obj['Offer Code'] || '').trim().toUpperCase();
-    if (!code) continue;
+    if (!code || code === 'FREESHIP') continue;
 
     const liveStatus = (obj['Live Status'] || '').trim().toLowerCase();
     if (liveStatus !== 'live') continue;
