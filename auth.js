@@ -214,15 +214,18 @@
   function updateUI() {
     currentUser = getStoredUser();
 
-    // 1. Header Account Button
+    // 1. Header Account Button (Desktop + Mobile Menu)
     const navAccountBtn = document.getElementById('navAccountBtn');
     const navAccountLabel = document.getElementById('navAccountLabel');
     const navAccountAvatar = document.getElementById('navAccountAvatar');
     const navAccountIcon = document.getElementById('navAccountIcon');
+    const mobileAccountAvatarSlot = document.getElementById('mobileAccountAvatarSlot');
+    const mobileAccountLabel = document.getElementById('mobileAccountLabel');
 
     if (navAccountBtn) {
       if (currentUser) {
         navAccountBtn.classList.add('logged-in');
+        navAccountBtn.setAttribute('aria-label', `Account (${currentUser.name})`);
         navAccountBtn.setAttribute('title', `Signed in as ${currentUser.name}`);
         if (navAccountLabel) {
           navAccountLabel.textContent = currentUser.givenName || currentUser.name.split(' ')[0];
@@ -239,10 +242,27 @@
         if (navAccountIcon) navAccountIcon.style.display = 'none';
       } else {
         navAccountBtn.classList.remove('logged-in');
+        navAccountBtn.setAttribute('aria-label', 'Sign in');
         navAccountBtn.setAttribute('title', 'Sign in with Gmail');
         if (navAccountLabel) navAccountLabel.textContent = 'Sign In';
         if (navAccountAvatar) navAccountAvatar.style.display = 'none';
         if (navAccountIcon) navAccountIcon.style.display = 'inline-block';
+      }
+    }
+
+    if (mobileAccountLabel) {
+      mobileAccountLabel.textContent = currentUser
+        ? (currentUser.givenName || currentUser.name.split(' ')[0])
+        : 'Sign in';
+    }
+    if (mobileAccountAvatarSlot) {
+      if (currentUser && currentUser.picture) {
+        mobileAccountAvatarSlot.innerHTML = `<img src="${currentUser.picture}" alt="${currentUser.name}" class="nav-avatar-img" referrerPolicy="no-referrer" />`;
+      } else if (currentUser) {
+        const initial = (currentUser.initials || currentUser.name[0] || 'P').toUpperCase();
+        mobileAccountAvatarSlot.innerHTML = `<span class="nav-avatar-initial">${initial}</span>`;
+      } else {
+        mobileAccountAvatarSlot.innerHTML = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>`;
       }
     }
 
@@ -582,11 +602,23 @@
     // Check session
     currentUser = getStoredUser();
 
-    // Setup Header Account Button
+    // Setup Header Account Button & Mobile Menu Account Row
     const navAccountBtn = document.getElementById('navAccountBtn');
     if (navAccountBtn) {
       navAccountBtn.addEventListener('click', (e) => {
         e.preventDefault();
+        openAuthModal();
+      });
+    }
+    const mobileMenuAccountBtn = document.getElementById('mobileMenuAccountBtn');
+    if (mobileMenuAccountBtn) {
+      mobileMenuAccountBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        if (typeof window.closeMobileMenu === 'function') {
+          window.closeMobileMenu(false);
+        } else {
+          document.body.classList.remove('menu-open');
+        }
         openAuthModal();
       });
     }

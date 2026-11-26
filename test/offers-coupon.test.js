@@ -26,18 +26,18 @@ test('Offers CSV Parser - distinguishes public offers vs hidden WhatsApp-only li
   assert.equal(offers.has('WELCOME10'), true);
   assert.equal(offers.has('EARRING25'), true);
   assert.equal(offers.has('FESTIVE200'), true);
-  assert.equal(offers.has('FREESHIP'), true);
+  assert.equal(offers.has('FREESHIP'), false, 'FREESHIP coupon must be ignored everywhere; free shipping above ₹799 is automatic');
   assert.equal(offers.has('WHATSAPP15'), true, 'Hidden WhatsApp-only live coupon must still validate when entered manually');
 
   assert.equal(offers.get('WELCOME10').showOnWebsite, true);
   assert.equal(offers.get('EARRING25').showOnWebsite, true);
   assert.equal(offers.get('WHATSAPP15').showOnWebsite, false, 'Show on Website = No must set showOnWebsite=false');
 
-  // Public display list must exclude Show on Website = No and non-Live coupons
+  // Public display list must exclude Show on Website = No, FREESHIP, and non-Live coupons
   const publicCodes = Array.from(offers.values())
     .filter(o => o.liveStatus === 'Live' && o.showOnWebsite)
     .map(o => o.code);
-  assert.deepEqual(publicCodes, ['WELCOME10', 'EARRING25', 'FESTIVE200', 'FREESHIP']);
+  assert.deepEqual(publicCodes, ['WELCOME10', 'EARRING25', 'FESTIVE200']);
   assert.equal(publicCodes.includes('WHATSAPP15'), false);
   assert.equal(publicCodes.includes('PAUSED50'), false);
 
@@ -93,7 +93,7 @@ test('Coupon Evaluator - validates hidden Show on Website = No coupon when Live 
   assert.match(shortfall.error, /Add ₹100 more to use WHATSAPP15/);
 });
 
-test('Coupon Evaluator - supports Percentage, Flat INR, and Free Shipping', () => {
+test('Coupon Evaluator - supports Percentage and Flat INR, and rejects removed FREESHIP code', () => {
   const offers = parseOffersFromCSV(SAMPLE_OFFERS_CSV);
 
   const pct = evaluateCouponOffer(offers.get('WELCOME10'), 539, [{ category: 'Necklaces', itemTotal: 539 }]);
@@ -105,9 +105,7 @@ test('Coupon Evaluator - supports Percentage, Flat INR, and Free Shipping', () =
   assert.equal(flat.discount, 200);
 
   const ship = evaluateCouponOffer(offers.get('FREESHIP'), 799, [{ category: 'Necklaces', itemTotal: 799 }]);
-  assert.equal(ship.ok, true);
-  assert.equal(ship.isFreeShip, true);
-  assert.equal(ship.discount, 0);
+  assert.equal(ship.ok, false);
 });
 
 test('Live Offers Integration - fetches live Google Sheet Offers CSV and filters public offers', async () => {

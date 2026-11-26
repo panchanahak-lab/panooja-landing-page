@@ -1,40 +1,237 @@
 // script.js - PANOOJA E-Commerce Frontend Logic & Live Catalog Integration
 
 // =============================================================
-// NAVIGATION & HEADER LOGIC
+// ANNOUNCEMENT BAR ROTATOR, DESKTOP/MOBILE HEADER & FULLSCREEN MENU
 // =============================================================
 const menuToggle = document.querySelector('.menu-toggle');
-const navLinks = document.querySelectorAll('.nav-links a');
 const header = document.querySelector('.site-header');
+const mobileMenuOverlay = document.getElementById('mobileMenuOverlay');
+const mobileMenuCloseBtn = document.getElementById('mobileMenuCloseBtn');
+
+const DEFAULT_ANNOUNCEMENT_SLIDES = [
+  {
+    desktop: 'Free shipping on orders above ₹799',
+    mobile: 'Free shipping above ₹799'
+  },
+  {
+    desktop: '10% off your first order · Code <strong>WELCOME10</strong>',
+    mobile: '10% off first order · <strong>WELCOME10</strong>'
+  },
+  {
+    desktop: '₹200 off orders above ₹1,499 · Code <strong>FESTIVE200</strong>',
+    mobile: '₹200 off above ₹1,499 · <strong>FESTIVE200</strong>'
+  }
+];
+
+let announcementSlides = DEFAULT_ANNOUNCEMENT_SLIDES.slice();
+let announcementIdx = 0;
+let announcementTimer = null;
+let announcementPaused = false;
+
+function renderAnnouncementSlide(idx, animate = false) {
+  const slideEl = document.getElementById('announcementSlide');
+  if (!slideEl || announcementSlides.length === 0) return;
+  const safeIdx = ((idx % announcementSlides.length) + announcementSlides.length) % announcementSlides.length;
+  announcementIdx = safeIdx;
+  const slide = announcementSlides[safeIdx];
+
+  const updateDom = () => {
+    slideEl.innerHTML = `<span class="ann-desktop">${slide.desktop}</span><span class="ann-mobile">${slide.mobile}</span>`;
+    slideEl.style.opacity = '1';
+  };
+
+  if (animate) {
+    slideEl.style.opacity = '0';
+    setTimeout(updateDom, 150);
+  } else {
+    updateDom();
+  }
+}
+
+function startAnnouncementRotator() {
+  if (announcementTimer) clearInterval(announcementTimer);
+  if (announcementSlides.length <= 1) return;
+  announcementTimer = setInterval(() => {
+    if (!announcementPaused) {
+      renderAnnouncementSlide(announcementIdx + 1, true);
+    }
+  }, 5000);
+}
+
+window.syncAnnouncementOfferSlides = function(publicOffers) {
+  // Maintain Part 1.1 3-offer sequence (never include removed FREESHIP)
+  const extraOffers = Array.isArray(publicOffers)
+    ? publicOffers.filter(o => o && o.code && o.code !== 'FREESHIP' && o.code !== 'WELCOME10' && o.code !== 'FESTIVE200')
+    : [];
+  const nextSlides = DEFAULT_ANNOUNCEMENT_SLIDES.slice();
+  extraOffers.forEach(o => {
+    const title = o.bannerTitle || o.code;
+    const escapedCode = String(o.code).replace(/[<>&"]/g, '');
+    const escapedTitle = String(title).replace(/[<>&"]/g, '');
+    nextSlides.push({
+      desktop: escapedTitle.toUpperCase().includes(escapedCode) ? escapedTitle : `${escapedTitle} · Code <strong>${escapedCode}</strong>`,
+      mobile: escapedTitle.toUpperCase().includes(escapedCode) ? escapedTitle : `${escapedTitle} · <strong>${escapedCode}</strong>`
+    });
+  });
+  announcementSlides = nextSlides;
+  if (announcementIdx >= announcementSlides.length) announcementIdx = 0;
+  renderAnnouncementSlide(announcementIdx, false);
+  startAnnouncementRotator();
+};
+
+const announcementBarEl = document.getElementById('liveAnnouncementBar');
+if (announcementBarEl) {
+  renderAnnouncementSlide(0, false);
+  startAnnouncementRotator();
+
+  announcementBarEl.addEventListener('mouseenter', () => { announcementPaused = true; });
+  announcementBarEl.addEventListener('mouseleave', () => { announcementPaused = false; });
+  announcementBarEl.addEventListener('focusin', () => { announcementPaused = true; });
+  announcementBarEl.addEventListener('focusout', () => { announcementPaused = false; });
+
+  const prevBtn = document.getElementById('annPrevBtn');
+  const nextBtn = document.getElementById('annNextBtn');
+  if (prevBtn) {
+    prevBtn.addEventListener('click', () => {
+      renderAnnouncementSlide(announcementIdx - 1, true);
+      startAnnouncementRotator();
+    });
+  }
+  if (nextBtn) {
+    nextBtn.addEventListener('click', () => {
+      renderAnnouncementSlide(announcementIdx + 1, true);
+      startAnnouncementRotator();
+    });
+  }
+}
+
+function openMobileMenu() {
+  if (!mobileMenuOverlay) return;
+  document.documentElement.classList.add('menu-open');
+  document.body.classList.add('menu-open');
+  document.documentElement.style.overflow = 'hidden';
+  document.body.style.overflow = 'hidden';
+  mobileMenuOverlay.classList.add('open');
+  mobileMenuOverlay.setAttribute('aria-hidden', 'false');
+  if (menuToggle) menuToggle.setAttribute('aria-expanded', 'true');
+  if (mobileMenuCloseBtn) {
+    setTimeout(() => mobileMenuCloseBtn.focus(), 40);
+  }
+}
+
+function closeMobileMenu(restoreFocus = true) {
+  document.documentElement.classList.remove('menu-open');
+  document.body.classList.remove('menu-open');
+  document.documentElement.style.overflow = '';
+  document.body.style.overflow = '';
+  if (!mobileMenuOverlay) return;
+  const wasOpen = mobileMenuOverlay.classList.contains('open') || document.body.classList.contains('menu-open');
+  mobileMenuOverlay.classList.remove('open');
+  mobileMenuOverlay.setAttribute('aria-hidden', 'true');
+  if (menuToggle) {
+    menuToggle.setAttribute('aria-expanded', 'false');
+    if (restoreFocus && wasOpen) {
+      menuToggle.focus();
+    }
+  }
+}
+window.closeMobileMenu = closeMobileMenu;
 
 if (menuToggle) {
   menuToggle.addEventListener('click', () => {
-    const isOpen = document.body.classList.toggle('menu-open');
-    menuToggle.setAttribute('aria-expanded', String(isOpen));
+    if (document.body.classList.contains('menu-open')) {
+      closeMobileMenu(true);
+    } else {
+      openMobileMenu();
+    }
+  });
+}
+
+if (mobileMenuCloseBtn) {
+  mobileMenuCloseBtn.addEventListener('click', () => closeMobileMenu(true));
+}
+
+if (mobileMenuOverlay) {
+  mobileMenuOverlay.addEventListener('click', (e) => {
+    const link = e.target.closest('a');
+    if (link) {
+      closeMobileMenu(false);
+    }
   });
 }
 
 // Brand logo smooth scroll to top on homepage without reloading or changing URL
-const brandLogo = document.querySelector('.site-header a.brand');
-if (brandLogo) {
-  brandLogo.addEventListener('click', (e) => {
+document.querySelectorAll('.site-header a.brand, .mobile-menu-brand').forEach(logoLink => {
+  logoLink.addEventListener('click', (e) => {
     const isHomePage = window.location.pathname === '/' || window.location.pathname.endsWith('index.html') || window.location.pathname === '';
     if (isHomePage) {
       e.preventDefault();
+      closeMobileMenu(false);
       window.scrollTo({ top: 0, behavior: 'smooth' });
       if (window.location.hash || window.location.pathname.endsWith('index.html')) {
         history.replaceState(null, '', '/');
       }
     }
   });
+});
+
+// Sync fallback header badge from localStorage even on pages without cart.js
+function syncHeaderBagFromStorage() {
+  try {
+    const raw = localStorage.getItem('panooja_cart');
+    const items = raw ? JSON.parse(raw) : [];
+    const count = Array.isArray(items) ? items.reduce((s, i) => s + (Number(i.quantity) || 0), 0) : 0;
+    document.querySelectorAll('#cartCount, .js-cart-badge-mirror').forEach(badge => {
+      badge.textContent = count;
+      badge.style.display = count > 0 ? 'inline-flex' : 'none';
+    });
+    const bagLabel = count === 1 ? 'Open bag, 1 item' : `Open bag, ${count} items`;
+    ['navCart', 'mobileMenuBagBtn'].forEach(id => {
+      const btn = document.getElementById(id);
+      if (btn) btn.setAttribute('aria-label', bagLabel);
+    });
+  } catch (e) {}
+}
+syncHeaderBagFromStorage();
+
+// Active section underline tracking in desktop nav
+function setActiveDesktopNav(sectionKey) {
+  document.querySelectorAll('#desktopNavLinks a, .nav-help-link').forEach(link => {
+    const match = link.getAttribute('data-nav-section') === sectionKey || link.getAttribute('data-cat-nav') === sectionKey;
+    link.classList.toggle('is-active', Boolean(sectionKey && match));
+  });
 }
 
-navLinks.forEach((link) => {
-  link.addEventListener('click', () => {
-    document.body.classList.remove('menu-open');
-    if (menuToggle) menuToggle.setAttribute('aria-expanded', 'false');
-  });
-});
+function initScrollNavHighlight() {
+  const isHome = window.location.pathname === '/' || window.location.pathname === '' || window.location.pathname.startsWith('/product/');
+  if (!isHome) return;
+  const targets = [
+    { key: 'shop', el: document.getElementById('shop') },
+    { key: 'story', el: document.getElementById('story') },
+    { key: 'faq', el: document.getElementById('faq') }
+  ].filter(t => t.el);
+  if (targets.length === 0) return;
+
+  const updateCurrentSection = () => {
+    const activeCatBtn = document.querySelector('.filter-btn.active');
+    const activeFilter = activeCatBtn ? activeCatBtn.getAttribute('data-filter') : 'all';
+    const scrollPos = window.scrollY + 180;
+    let current = '';
+    for (const t of targets) {
+      if (scrollPos >= t.el.offsetTop) {
+        current = t.key;
+      }
+    }
+    if (current === 'shop' && activeFilter && activeFilter !== 'all') {
+      setActiveDesktopNav(activeFilter);
+    } else {
+      setActiveDesktopNav(current);
+    }
+  };
+
+  window.addEventListener('scroll', updateCurrentSection, { passive: true });
+  updateCurrentSection();
+}
 
 // Sticky header scroll effect
 window.addEventListener('scroll', () => {
@@ -829,7 +1026,63 @@ function normalizeCategory(cat) {
   return lower.replace(/[^a-z0-9]/g, '-');
 }
 
-// Hide filter buttons and homepage category cards with 0 live products; show automatically when populated
+const CATEGORY_NAV_CONFIG = [
+  { key: 'earrings', label: 'Earrings' },
+  { key: 'rings', label: 'Rings' },
+  { key: 'pendants', label: 'Pendants & Chains' },
+  { key: 'bracelets', label: 'Kadas & Bracelets' }
+];
+
+function getDisplayCategoryLabel(rawCat, categoryKey) {
+  const key = categoryKey || normalizeCategory(rawCat);
+  const found = CATEGORY_NAV_CONFIG.find(c => c.key === key);
+  if (found) return found.label;
+  return rawCat || 'Jewellery';
+}
+
+// Render live category links in Desktop & Mobile Headers (only categories with active products)
+function renderHeaderCategoryLinks(activeKeys) {
+  const keysList = Array.isArray(activeKeys) ? activeKeys : [];
+  const items = CATEGORY_NAV_CONFIG.filter(c => keysList.includes(c.key));
+  const isHomeCatalog = Boolean(document.getElementById('productGrid'));
+
+  const desktopWrap = document.getElementById('navLiveCategories');
+  if (desktopWrap) {
+    desktopWrap.innerHTML = items.map(c =>
+      `<a href="/?category=${encodeURIComponent(c.key)}#shop" data-cat-nav="${escapeHTML(c.key)}" class="nav-cat-link">${escapeHTML(c.label)}</a>`
+    ).join('');
+  }
+
+  const mobileWrap = document.getElementById('mobileLiveCategories');
+  if (mobileWrap) {
+    mobileWrap.innerHTML = items.map(c =>
+      `<a href="/?category=${encodeURIComponent(c.key)}#shop" data-cat-nav="${escapeHTML(c.key)}" class="mobile-menu-link">${escapeHTML(c.label)}</a>`
+    ).join('');
+  }
+
+  document.querySelectorAll('[data-cat-nav]').forEach(link => {
+    link.addEventListener('click', (e) => {
+      if (!isHomeCatalog) return;
+      e.preventDefault();
+      const targetKey = link.getAttribute('data-cat-nav');
+      closeMobileMenu(false);
+      if (document.body.classList.contains('quick-view-open')) {
+        closeQuickView(true);
+      }
+      const targetBtn = document.querySelector(`.category-filter-wrap .filter-btn[data-filter="${targetKey}"]`);
+      if (targetBtn) {
+        document.querySelectorAll('.category-filter-wrap .filter-btn').forEach(b => b.classList.remove('active'));
+        targetBtn.classList.add('active');
+        applyCategoryFilter();
+        setActiveDesktopNav(targetKey);
+      }
+      const shopSection = document.getElementById('shop');
+      if (shopSection) shopSection.scrollIntoView({ behavior: 'smooth' });
+    });
+  });
+}
+
+// Hide filter buttons and homepage category cards with 0 live products; number visible category cards 01, 02...
 function updateCategoryVisibility(categoryCounts) {
   const buttons = document.querySelectorAll('.category-filter-wrap .filter-btn');
   let activeWasHidden = false;
@@ -867,7 +1120,13 @@ function updateCategoryVisibility(categoryCounts) {
     const hasItems = count > 0;
     card.hidden = !hasItems;
     card.style.display = hasItems ? '' : 'none';
-    if (hasItems) visibleCards++;
+    if (hasItems) {
+      visibleCards++;
+      const numSpan = card.querySelector('.collection-meta > span');
+      if (numSpan) {
+        numSpan.textContent = String(visibleCards).padStart(2, '0');
+      }
+    }
   });
 
   if (collectionsSection) {
@@ -881,6 +1140,14 @@ function updateCategoryVisibility(categoryCounts) {
       collectionGrid.classList.add('collection-grid-compact');
     }
   }
+
+  const activeCategoryKeys = CATEGORY_NAV_CONFIG
+    .filter(c => (categoryCounts.get(c.key) || 0) > 0)
+    .map(c => c.key);
+  try {
+    sessionStorage.setItem('panooja_live_categories', JSON.stringify(activeCategoryKeys));
+  } catch (e) {}
+  renderHeaderCategoryLinks(activeCategoryKeys);
 }
 
 // Use the first live product image in each category for its Shop-by-Category card
@@ -1067,8 +1334,9 @@ async function loadLiveProducts() {
     activeProducts.forEach((item, index) => {
       const sku = item['SKU'] || `PNJ-${index + 1}`;
       const name = (item['Product Name'] || 'PANOOJA Everyday Jewellery').trim();
-      const category = item['Category'] || 'Jewellery';
-      const categoryKey = normalizeCategory(category);
+      const rawCategory = item['Category'] || 'Jewellery';
+      const categoryKey = normalizeCategory(rawCategory);
+      const category = getDisplayCategoryLabel(rawCategory, categoryKey);
       categoryCounts.set(categoryKey, (categoryCounts.get(categoryKey) || 0) + 1);
 
       const rawShortDesc = getSheetField(item, 'Description');
@@ -1713,12 +1981,16 @@ Please share payment details and dispatch time!`;
   });
 }
 
-// Escape Key Closes Topmost Active Modal / Lightbox
+// Escape Key Closes Topmost Active Modal / Lightbox / Mobile Menu
 document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape') {
     const zoomOverlay = document.getElementById('imageZoomOverlay');
     if (zoomOverlay && zoomOverlay.classList.contains('is-open')) {
       closeImageZoom();
+      return;
+    }
+    if (document.body.classList.contains('menu-open')) {
+      closeMobileMenu(true);
       return;
     }
     if (document.body.classList.contains('quick-view-open')) {
@@ -1730,6 +2002,23 @@ document.addEventListener('keydown', (e) => {
   }
 });
 
+// Sync Contact / Footer Business Details from window.PANOOJA_CONFIG
+function syncBusinessDetailsFromConfig() {
+  const cfg = window.PANOOJA_CONFIG;
+  if (!cfg) return;
+  document.querySelectorAll('[data-config-field]').forEach(el => {
+    const field = el.getAttribute('data-config-field');
+    if (!field) return;
+    if (field === 'GRIEVANCE_EMAIL') {
+      const val = cfg.GRIEVANCE_EMAIL ? cfg.GRIEVANCE_EMAIL.trim() : '';
+      el.textContent = val || 'Coming soon';
+    } else if (cfg[field]) {
+      el.textContent = cfg[field];
+    }
+  });
+}
+syncBusinessDetailsFromConfig();
+
 // Category Filter Tab Listeners
 const filterBtns = document.querySelectorAll('.filter-btn');
 if (filterBtns.length > 0) {
@@ -1738,6 +2027,8 @@ if (filterBtns.length > 0) {
       filterBtns.forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
       applyCategoryFilter();
+      const f = btn.getAttribute('data-filter');
+      setActiveDesktopNav(f && f !== 'all' ? f : 'shop');
     });
   });
 }
@@ -1765,7 +2056,55 @@ if (categoryTriggers.length > 0) {
   });
 }
 
-// Initialize live products on DOM load
+// Hydrate header category links across non-catalog pages (policy pages, cart, checkout, 404)
+async function hydrateHeaderCategories() {
+  try {
+    const cached = sessionStorage.getItem('panooja_live_categories');
+    if (cached) {
+      const parsed = JSON.parse(cached);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        renderHeaderCategoryLinks(parsed);
+        return;
+      }
+    }
+  } catch (e) {}
+
+  try {
+    const res = await fetch(`${GOOGLE_SHEETS_CSV_URL}&_t=${Date.now()}`, { cache: 'no-store' });
+    if (!res.ok) return;
+    const csvData = await res.text();
+    const parsedRows = parseCSV(csvData);
+    if (!parsedRows || parsedRows.length < 2) return;
+    const headers = parsedRows[0].map(h => h.trim());
+    const keysSet = new Set();
+    parsedRows.slice(1).forEach(row => {
+      const obj = {};
+      headers.forEach((h, i) => { obj[h] = row[i] ? row[i].trim() : ''; });
+      const activeVal = (obj['Active on Website (Yes/No)'] || obj['Active on Website'] || '').trim().toLowerCase();
+      if (activeVal === 'yes' && (obj['Product Name'] || obj['SKU'])) {
+        keysSet.add(normalizeCategory(obj['Category'] || ''));
+      }
+    });
+    const keysList = CATEGORY_NAV_CONFIG.filter(c => keysSet.has(c.key)).map(c => c.key);
+    try { sessionStorage.setItem('panooja_live_categories', JSON.stringify(keysList)); } catch (e) {}
+    renderHeaderCategoryLinks(keysList);
+  } catch (e) {}
+}
+
+// Initialize live products on DOM load, plus apply ?category= filter & header nav sync
 if (document.getElementById('productGrid')) {
-  loadLiveProducts();
+  loadLiveProducts().then(() => {
+    const urlCat = new URLSearchParams(window.location.search).get('category');
+    if (urlCat) {
+      const btn = document.querySelector(`.category-filter-wrap .filter-btn[data-filter="${urlCat}"]`);
+      if (btn && !btn.hidden) {
+        document.querySelectorAll('.category-filter-wrap .filter-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        applyCategoryFilter();
+      }
+    }
+    initScrollNavHighlight();
+  });
+} else {
+  hydrateHeaderCategories();
 }

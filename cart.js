@@ -63,6 +63,13 @@ function syncPaymentModeUI() {
       ? '🔒 100% Encrypted Checkout via Razorpay'
       : 'Pay by UPI after we confirm your order on WhatsApp';
   }
+
+  const privacyPayment = document.getElementById('privacyPaymentText');
+  if (privacyPayment) {
+    privacyPayment.textContent = onlineEnabled
+      ? 'PANOOJA never stores, views, or processes your credit card numbers, debit card details, or UPI PINs. All online payments are securely processed through RBI-authorized payment aggregators (Razorpay) using 256-bit SSL encryption adhering to PCI-DSS Level 1 compliance.'
+      : 'Orders are confirmed on WhatsApp and paid by UPI. We never ask for your UPI PIN or card details.';
+  }
 }
 
 let cart = JSON.parse(localStorage.getItem('panooja_cart')) || [];
@@ -71,6 +78,7 @@ let liveOffersMap = new Map();
 let liveOffersLoaded = false;
 let offersFetchPromise = null;
 let lastPromoFeedback = { type: '', message: '' };
+let isCartOffersExpanded = false;
 
 function escapeCartHtml(str) {
   return String(str || '')
@@ -159,7 +167,7 @@ function parseOffersFromCsv(csvData) {
     });
 
     const code = (obj['Offer Code'] || '').trim().toUpperCase();
-    if (!code) continue;
+    if (!code || code === 'FREESHIP') continue;
 
     // Strictly require Live Status === 'Live' (case-insensitive, trimmed)
     const liveStatus = (obj['Live Status'] || '').trim().toLowerCase();
@@ -176,7 +184,8 @@ function parseOffersFromCsv(csvData) {
     const discountValue = parseFloat(String(obj['Discount Value'] || '0').replace(/[^0-9.]/g, '')) || 0;
     const minOrderValue = parseInt(String(obj['Min Order Value (INR)'] || obj['Min Order Value'] || '0').replace(/[^0-9]/g, ''), 10) || 0;
     const appliesTo = (obj['Applies To'] || 'All Products').trim() || 'All Products';
-    const bannerTitle = (obj['Banner / Offer Title'] || obj['Offer Title'] || '').trim();
+    const rawBannerTitle = (obj['Banner / Offer Title'] || obj['Offer Title'] || '').trim();
+    const bannerTitle = rawBannerTitle.replace(/\bRs\.?\s*/gi, '₹');
     const rawShow = (obj['Show on Website (Yes/No)'] || obj['Show on Website'] || '').trim().toLowerCase();
     const showOnWebsite = rawShow === 'yes';
 
@@ -206,27 +215,11 @@ function getFeaturedPublicOffer() {
   return publicOffers.find(o => o.code === 'WELCOME10') || publicOffers[0];
 }
 
-// Update top announcement bar automatically ONLY with public Live offers (Show on Website === Yes)
+// Preserve the Part 1.1 rotating announcement bar (never render FREESHIP)
 function updateAnnouncementBarWithOffers() {
-  const bar = document.getElementById('liveAnnouncementBar') || document.querySelector('.announcement[data-live-offers="true"]');
-  if (!bar) return;
-
-  const publicOffers = getPublicLiveOffers();
-  if (publicOffers.length === 0) {
-    bar.innerHTML = `<span class="announcement-dot"></span><span class="announcement-offers">WATERPROOF &amp; ANTI-TARNISH JEWELLERY · FREE EXPRESS SHIPPING ABOVE ₹${FREE_SHIPPING_THRESHOLD}</span>`;
-    return;
+  if (typeof window.syncAnnouncementOfferSlides === 'function') {
+    window.syncAnnouncementOfferSlides(getPublicLiveOffers());
   }
-
-  const segments = publicOffers.map(offer => {
-    const title = offer.bannerTitle || `${offer.code} Offer`;
-    const alreadyHasCode = title.toUpperCase().includes(offer.code);
-    if (alreadyHasCode) {
-      return `<span>${escapeCartHtml(title)}</span>`;
-    }
-    return `<span>${escapeCartHtml(title)} · CODE: <strong>${escapeCartHtml(offer.code)}</strong></span>`;
-  });
-
-  bar.innerHTML = `<span class="announcement-dot"></span><span class="announcement-offers">${segments.join('<span class="announcement-sep" aria-hidden="true">·</span>')}</span>`;
 }
 
 // Update Homepage Promo Section dynamically from public offers (never reveals Show on Website = No offers)
@@ -329,9 +322,19 @@ function saveCart() {
 
 function updateCartBadge() {
   const count = cart.reduce((sum, item) => sum + item.quantity, 0);
-  const badges = document.querySelectorAll('#cartCount, #drawerCartCount');
-  badges.forEach(b => {
+  const drawerBadge = document.getElementById('drawerCartCount');
+  if (drawerBadge) drawerBadge.textContent = count;
+
+  const headerBadges = document.querySelectorAll('#cartCount, .js-cart-badge-mirror');
+  headerBadges.forEach(b => {
     b.textContent = count;
+    b.style.display = count > 0 ? 'inline-flex' : 'none';
+  });
+
+  const bagLabel = count === 1 ? 'Open bag, 1 item' : `Open bag, ${count} items`;
+  ['navCart', 'mobileMenuBagBtn'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.setAttribute('aria-label', bagLabel);
   });
 }
 
@@ -607,14 +610,18 @@ function renderCartDrawer() {
 function syncAllPromoUIs(discountInfo, subtotal) {
   const promoContainers = [
     {
+      isDrawer: true,
       tag: document.getElementById('promoAppliedTag'),
       label: document.getElementById('promoCodeLabel'),
       feedback: document.getElementById('promoFeedback'),
+      toggleWrap: document.getElementById('promoOffersToggleWrap'),
+      toggleBtn: document.getElementById('toggleCartOffersBtn'),
       availableWrap: document.getElementById('promoAvailableWrap'),
       availableList: document.getElementById('promoAvailableList'),
       hint: document.getElementById('promoHint')
     },
     {
+      isDrawer: false,
       tag: document.getElementById('checkoutPromoAppliedTag'),
       label: document.getElementById('checkoutPromoCodeLabel'),
       feedback: document.getElementById('checkoutPromoFeedback'),
@@ -623,6 +630,7 @@ function syncAllPromoUIs(discountInfo, subtotal) {
       hint: document.getElementById('checkoutPromoHint')
     },
     {
+      isDrawer: false,
       tag: document.getElementById('pagePromoAppliedTag'),
       label: document.getElementById('pagePromoCodeLabel'),
       feedback: document.getElementById('pagePromoFeedback'),
@@ -638,7 +646,7 @@ function syncAllPromoUIs(discountInfo, subtotal) {
   if (!liveOffersLoaded) {
     hintText = 'Loading live offers...';
   } else if (publicList.length > 0) {
-    hintText = 'Tap an available coupon above or enter a private code.';
+    hintText = 'Tap View offers or enter a code above.';
   }
 
   const availableChipsHtml = publicList.map(o => {
@@ -651,11 +659,14 @@ function syncAllPromoUIs(discountInfo, subtotal) {
     </button>`;
   }).join('');
 
-  // Decide inline feedback message & style
+  // Show action error from failed attempt BEFORE active coupon summary so failing code never hides error or drops active coupon
   let feedbackType = '';
   let feedbackMsg = '';
 
-  if (discountInfo.error) {
+  if (lastPromoFeedback && lastPromoFeedback.type === 'error' && lastPromoFeedback.message) {
+    feedbackType = 'error';
+    feedbackMsg = lastPromoFeedback.message;
+  } else if (discountInfo.error) {
     feedbackType = 'error';
     feedbackMsg = discountInfo.error;
   } else if (discountInfo.valid && discountInfo.savingsText) {
@@ -672,7 +683,6 @@ function syncAllPromoUIs(discountInfo, subtotal) {
         ui.tag.style.display = 'inline-flex';
         ui.label.textContent = discountInfo.code || appliedCoupon;
       } else if (appliedCoupon && discountInfo.error && subtotal > 0) {
-        // Show tag with Remove option so user can clear or keep adding items
         ui.tag.style.display = 'inline-flex';
         ui.label.textContent = discountInfo.code || appliedCoupon;
       } else {
@@ -690,7 +700,23 @@ function syncAllPromoUIs(discountInfo, subtotal) {
       }
     }
 
-    if (ui.availableWrap && ui.availableList) {
+    if (ui.isDrawer) {
+      const hasOffers = liveOffersLoaded && publicList.length > 0;
+      if (ui.toggleWrap) ui.toggleWrap.style.display = hasOffers ? 'flex' : 'none';
+      if (ui.toggleBtn) {
+        ui.toggleBtn.textContent = isCartOffersExpanded ? 'Hide offers' : 'View offers';
+        ui.toggleBtn.setAttribute('aria-expanded', String(Boolean(isCartOffersExpanded && hasOffers)));
+      }
+      if (ui.availableWrap && ui.availableList) {
+        if (hasOffers) {
+          ui.availableList.innerHTML = availableChipsHtml;
+          ui.availableWrap.style.display = isCartOffersExpanded ? 'block' : 'none';
+        } else {
+          ui.availableWrap.style.display = 'none';
+          ui.availableList.innerHTML = '';
+        }
+      }
+    } else if (ui.availableWrap && ui.availableList) {
       if (liveOffersLoaded && publicList.length > 0) {
         ui.availableWrap.style.display = 'block';
         ui.availableList.innerHTML = availableChipsHtml;
@@ -701,7 +727,8 @@ function syncAllPromoUIs(discountInfo, subtotal) {
     }
 
     if (ui.hint) {
-      ui.hint.textContent = hintText;
+      ui.hint.textContent = ui.isDrawer && liveOffersLoaded && publicList.length > 0 ? '' : hintText;
+      ui.hint.style.display = ui.hint.textContent ? 'block' : 'none';
     }
   });
 }
@@ -797,9 +824,7 @@ async function applyPromoCode(code, fromUserInput = false) {
 
   if (!offer) {
     lastPromoFeedback = { type: 'error', message: 'This coupon code is invalid or expired.' };
-    if (fromUserInput && appliedCoupon === cleanCode) {
-      appliedCoupon = null;
-    }
+    // Never silently drop an existing valid coupon when a newly entered code fails
     saveCart();
     return { ok: false, error: lastPromoFeedback.message };
   }
@@ -808,11 +833,9 @@ async function applyPromoCode(code, fromUserInput = false) {
     const shortfall = offer.minOrderValue - subtotal;
     const msg = `Add ₹${shortfall.toLocaleString('en-IN')} more to use ${offer.code}`;
     lastPromoFeedback = { type: 'error', message: msg };
-    // Save code if triggered programmatically (e.g. newsletter), or reject cleanly if entered manually
-    if (!fromUserInput) {
+    // Save code only when triggered programmatically with no active coupon; never drop an active coupon on failed input
+    if (!fromUserInput && !appliedCoupon) {
       appliedCoupon = offer.code;
-    } else {
-      appliedCoupon = null;
     }
     saveCart();
     return { ok: false, error: msg };
@@ -829,7 +852,7 @@ async function applyPromoCode(code, fromUserInput = false) {
     if (matchingTotal <= 0) {
       const msg = `${offer.code} applies only to ${offer.appliesTo}. Add a matching item to use it.`;
       lastPromoFeedback = { type: 'error', message: msg };
-      if (fromUserInput) appliedCoupon = null;
+      // Never remove existing applied coupon on category mismatch
       saveCart();
       return { ok: false, error: msg };
     }
@@ -1335,12 +1358,35 @@ document.addEventListener('DOMContentLoaded', () => {
   renderCartDrawer();
   fetchLiveOffers();
 
-  // Header Nav Cart Click -> Open Slide-out Drawer
+  // Header Nav Cart & Mobile Bag Click -> Open Slide-out Drawer on pages that have it, else go to /cart
+  const handleBagOpen = (e) => {
+    if (document.getElementById('cartDrawer')) {
+      e.preventDefault();
+      if (typeof window.closeMobileMenu === 'function') {
+        window.closeMobileMenu(false);
+      } else {
+        document.body.classList.remove('menu-open');
+      }
+      openCartDrawer();
+    } else {
+      window.location.href = '/cart';
+    }
+  };
   const navCartBtn = document.getElementById('navCart');
   if (navCartBtn) {
-    navCartBtn.addEventListener('click', (e) => {
-      e.preventDefault();
-      openCartDrawer();
+    navCartBtn.addEventListener('click', handleBagOpen);
+  }
+  const mobileBagBtn = document.getElementById('mobileMenuBagBtn');
+  if (mobileBagBtn) {
+    mobileBagBtn.addEventListener('click', handleBagOpen);
+  }
+
+  // Cart drawer collapsed "View offers" toggle
+  const toggleCartOffersBtn = document.getElementById('toggleCartOffersBtn');
+  if (toggleCartOffersBtn) {
+    toggleCartOffersBtn.addEventListener('click', () => {
+      isCartOffersExpanded = !isCartOffersExpanded;
+      renderCartDrawer();
     });
   }
 
