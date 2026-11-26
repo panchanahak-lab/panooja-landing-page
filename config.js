@@ -5,7 +5,7 @@ window.PANOOJA_CONFIG = {
   BUSINESS_HOURS: 'Mon–Sat, 10:00 AM – 7:00 PM IST',
   CUSTOMER_CARE_PHONE: '+91 7984528870',
   SUPPORT_EMAIL: 'support@panooja.com',
-  LEGAL_NAME: 'Panchanan Nahak, trading as PANOOJA',
+  LEGAL_NAME: 'PANOOJA',
   BUSINESS_ADDRESS: 'Amroli, Surat, Gujarat, 394107',
   GSTIN: '24BDUPN6515K1Z0',
   GRIEVANCE_NAME: 'Panooja Jweles',
