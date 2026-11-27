@@ -85,23 +85,72 @@ export default async function handler(req, res) {
 
     // Save WhatsApp inquiry cleanly without requiring Razorpay keys or API call
     if (isWhatsappInquiry) {
-      saveOrder({
-        order_id: receipt,
-        receipt,
-        amount: amountInPaise,
-        currency,
-        status: 'WhatsApp Inquiry',
-        customer: {
-          name: customerName,
-          phone: customerPhone,
-          email: customerEmail,
-          address: deliveryAddress
-        },
-        items: calculation ? calculation.items : [],
-        subtotal: calculation ? calculation.subtotal : Math.round(amountInPaise / 100),
-        discount: calculation ? calculation.discount : 0,
-        promo_code: calculation ? calculation.promoCode : (body.promo_code || '')
-      });
+      const itemsList = calculation ? calculation.items : [];
+      const subtotalVal = calculation ? calculation.subtotal : Math.round(amountInPaise / 100);
+      const discountVal = calculation ? calculation.discount : 0;
+      const shippingVal = calculation ? calculation.shippingFee : 0;
+      const promoVal = calculation ? calculation.promoCode : (body.promo_code || '');
+
+      try {
+        saveOrder({
+          order_id: receipt,
+          receipt,
+          amount: amountInPaise,
+          currency,
+          status: 'WhatsApp Inquiry',
+          customer: {
+            name: customerName,
+            phone: customerPhone,
+            email: customerEmail,
+            address: deliveryAddress
+          },
+          items: itemsList,
+          subtotal: subtotalVal,
+          discount: discountVal,
+          promo_code: promoVal
+        });
+      } catch (saveErr) {
+        console.warn('Local order store save note:', saveErr.message);
+      }
+
+      // Optional Google Sheet / Email notification via Google Apps Script webhook
+      let forwardedToSheet = false;
+      const webhookUrl = process.env.GOOGLE_ORDERS_SCRIPT_URL || process.env.GOOGLE_APPS_SCRIPT_URL;
+      const formSecret = process.env.FORM_SECRET;
+      if (webhookUrl && formSecret) {
+        try {
+          const itemsSummary = itemsList.map(i => `${i.name} (${i.sku}) x ${i.quantity} = ₹${i.itemTotal}`).join(' | ');
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 5000);
+          const hookRes = await fetch(webhookUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              record_type: 'whatsapp_inquiry',
+              secret: formSecret,
+              order_id: receipt,
+              created_at: new Date().toISOString(),
+              status: 'WhatsApp Inquiry',
+              customer_name: customerName,
+              customer_phone: customerPhone,
+              customer_email: customerEmail,
+              delivery_address: deliveryAddress,
+              items_summary: itemsSummary,
+              items: itemsList,
+              subtotal: subtotalVal,
+              discount: discountVal,
+              promo_code: promoVal,
+              shipping_fee: shippingVal,
+              total: Math.round(amountInPaise / 100)
+            }),
+            signal: controller.signal
+          });
+          clearTimeout(timeoutId);
+          forwardedToSheet = hookRes.ok;
+        } catch (hookErr) {
+          console.warn('WhatsApp order webhook note:', hookErr.message);
+        }
+      }
 
       return res.status(200).json({
         ok: true,
@@ -109,6 +158,7 @@ export default async function handler(req, res) {
         order_id: receipt,
         amount: amountInPaise,
         currency,
+        forwarded_to_sheet: forwardedToSheet,
         calculation: calculation ? {
           subtotal: calculation.subtotal,
           discount: calculation.discount,

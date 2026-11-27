@@ -58,40 +58,42 @@
     }
   }
 
+  let gsiInitialized = false;
+
   // =============================================================
   // GOOGLE IDENTITY SERVICES (GSI) INITIALIZATION
+  // Initialized only when the user opens Sign-In (never triggers auto One Tap / FedCM prompts)
   // =============================================================
   function initGoogleIdentity() {
     if (typeof window.google === 'undefined' || !window.google.accounts || !window.google.accounts.id) {
-      // SDK not loaded yet, retry shortly
-      setTimeout(initGoogleIdentity, 300);
-      return;
+      return false;
     }
 
-    try {
-      window.google.accounts.id.initialize({
-        client_id: DEFAULT_GOOGLE_CLIENT_ID,
-        callback: handleGoogleCredentialResponse,
-        auto_select: false,
-        cancel_on_tap_outside: true,
-        use_fedcm_for_prompt: true
-      });
-
-      // Render button if container exists
-      renderGsiButton();
-
-      // Prompt One Tap if guest (FedCM handles display silently without deprecated status callbacks)
-      if (!currentUser) {
-        window.google.accounts.id.prompt();
+    if (!gsiInitialized) {
+      try {
+        window.google.accounts.id.initialize({
+          client_id: DEFAULT_GOOGLE_CLIENT_ID,
+          callback: handleGoogleCredentialResponse,
+          auto_select: false,
+          cancel_on_tap_outside: true
+        });
+        gsiInitialized = true;
+      } catch (err) {
+        console.debug('Google Identity Services init note:', err.message);
+        return false;
       }
-    } catch (err) {
-      console.log('Google Identity Services note:', err.message);
     }
+    return true;
   }
 
-  function renderGsiButton() {
+  function renderGsiButton(retryCount = 0) {
     const gsiContainer = document.getElementById('googleGsiBtnContainer');
-    if (!gsiContainer || typeof window.google === 'undefined' || !window.google.accounts || !window.google.accounts.id) {
+    if (!gsiContainer) return;
+
+    if (!initGoogleIdentity()) {
+      if (retryCount < 10) {
+        setTimeout(() => renderGsiButton(retryCount + 1), 300);
+      }
       return;
     }
 
@@ -107,7 +109,7 @@
         width: 300
       });
     } catch (err) {
-      console.log('Google button rendering fallback:', err);
+      console.debug('Google button rendering note:', err);
     }
   }
 
@@ -311,7 +313,7 @@
             <div class="perk-item">
               <span class="perk-icon">✓</span>
               <div>
-                <strong>Express Delivery &amp; Tracking</strong>
+                <strong>24h Dispatch &amp; Tracking</strong>
                 <p>Instant WhatsApp dispatch notifications</p>
               </div>
             </div>
@@ -443,7 +445,7 @@
           <!-- Perks Checklist -->
           <div class="auth-perks-list">
             <div class="perk-tag">✓ 10% Off First Purchase</div>
-            <div class="perk-tag">✓ Auto-filled Express Delivery</div>
+            <div class="perk-tag">✓ Auto-filled Delivery Details</div>
             <div class="perk-tag">✓ Secure &amp; Anti-Tarnish Guarantee</div>
           </div>
         </div>
@@ -636,9 +638,6 @@
 
     // Initial render
     updateUI();
-
-    // Initialize Google Identity Services
-    initGoogleIdentity();
   });
 
   // Expose on window

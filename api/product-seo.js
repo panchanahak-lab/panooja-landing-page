@@ -140,10 +140,29 @@ export default async function handler(req, res) {
   // Replace Meta Description
   html = html.replace(/<meta\s+name=["']description["']\s+content=["'][^"']*["']/i, `<meta name="description" content="${escapeXml(seoDesc)}"`);
 
-  // Ensure product page has its own <h1> (product name) & visible price matching structured data
+  // Ensure product page has its own <h1> (product name), visible breadcrumb, category, description, specs & price matching structured data
+  const catSlugParam = product.categoryKey && product.categoryKey !== 'all' ? `/?category=${encodeURIComponent(product.categoryKey)}#shop` : '/#shop';
+  const breadcrumbHtml = `<a href="/">Home</a> <span aria-hidden="true">/</span> <a href="${escapeXml(catSlugParam)}">${escapeXml(product.category)}</a> <span aria-hidden="true">/</span> <span>${escapeXml(product.name)}</span>`;
+  html = html.replace(/<nav\s+class=["']qv-breadcrumb["']\s+id=["']quickViewBreadcrumb["'][^>]*>[\s\S]*?<\/nav>/i, `<nav class="qv-breadcrumb" id="quickViewBreadcrumb" aria-label="Breadcrumb">${breadcrumbHtml}</nav>`);
+  html = html.replace(/<span\s+class=["']product-category-tag["']\s+id=["']quickViewCategory["'][^>]*>[\s\S]*?<\/span>/i, `<span class="product-category-tag" id="quickViewCategory">${escapeXml(product.category)}</span>`);
   html = html.replace(/<h1\s+id=["']heroHeadline["'][^>]*>([\s\S]*?)<\/h1>/i, '<h2 id="heroHeadline">$1</h2>');
   html = html.replace(/<h2\s+id=["']quickViewTitle["']\s+class=["']quick-view-title["'][^>]*>[\s\S]*?<\/h2>/i, `<h1 id="quickViewTitle" class="quick-view-title">${escapeXml(product.name)}</h1>`);
   html = html.replace(/<span\s+class=["']product-final-price["']\s+id=["']quickViewPrice["'][^>]*>[\s\S]*?<\/span>/i, `<span class="product-final-price" id="quickViewPrice">₹${numericPrice.toLocaleString('en-IN')}</span>`);
+  html = html.replace(/<p\s+class=["']quick-view-desc["']\s+id=["']quickViewDesc["'][^>]*>[\s\S]*?<\/p>/i, `<p class="quick-view-desc" id="quickViewDesc">${escapeXml(product.popupDesc || '')}</p>`);
+
+  if (Array.isArray(product.specs) && product.specs.length > 0) {
+    const specsRowsHtml = product.specs
+      .map(s => `<div class="qv-detail-row"><dt>${escapeXml(s.label)}</dt><dd>${escapeXml(s.value)}</dd></div>`)
+      .join('');
+    html = html.replace(
+      /<div\s+class=["']quick-view-details-list["']\s+id=["']quickViewDetailsList["']\s+style=["'][^"']*["']>/i,
+      '<div class="quick-view-details-list" id="quickViewDetailsList" style="display: block;">'
+    );
+    html = html.replace(
+      /<dl\s+class=["']qv-details-grid["']\s+id=["']quickViewDetailsGrid["'][^>]*>[\s\S]*?<\/dl>/i,
+      `<dl class="qv-details-grid" id="quickViewDetailsGrid">${specsRowsHtml}</dl>`
+    );
+  }
 
   // Replace Canonical Link
   html = html.replace(/<link\s+rel=["']canonical["']\s+href=["'][^"']*["']/i, `<link rel="canonical" href="${escapeXml(productUrl)}"`);

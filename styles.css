@@ -57,6 +57,7 @@ img { max-width: 100%; height: auto; display: block; }
 ------------------------------------------------------------- */
 .announcement {
   position: relative;
+  z-index: 51;
   background: var(--black);
   color: rgba(255, 255, 255, 0.88);
   font-family: var(--font-sans);
@@ -85,7 +86,9 @@ img { max-width: 100%; height: auto; display: block; }
   align-items: center;
   justify-content: center;
   width: 44px;
-  height: 38px;
+  height: 44px;
+  min-height: 44px;
+  margin: -4px 0;
   padding: 0;
   border: 0;
   background: transparent;
@@ -590,10 +593,25 @@ h2 {
   border: 1px solid var(--light-grey);
   box-shadow: 0 4px 20px rgba(5, 5, 5, 0.03);
 }
+.hero-visual picture,
+.story-panel picture {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.collection-card picture {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  display: block;
+  width: 100%;
+  height: 100%;
+}
 .hero-image {
   width: 100%;
   height: 100%;
   object-fit: cover;
+  object-position: 50% 56%;
   transition: transform 0.8s cubic-bezier(0.25, 1, 0.5, 1);
 }
 .hero-visual:hover .hero-image {
@@ -885,8 +903,12 @@ h2 {
 .filter-btn {
   background: transparent;
   border: 1px solid var(--light-grey);
-  padding: 8px 22px;
+  min-height: 44px;
+  padding: 10px 22px;
   border-radius: var(--radius-sm);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   font-family: var(--font-sans);
   font-size: 0.78rem;
   font-weight: 600;
@@ -1336,6 +1358,7 @@ h2 {
   height: 100%;
   min-height: 500px;
   object-fit: cover;
+  object-position: 50% 56%;
   background: var(--soft-cool-white);
 }
 .story-copy {
@@ -2329,6 +2352,24 @@ body:not(.quick-view-open) .quick-view-modal * {
   display: flex;
   flex-direction: column;
 }
+.qv-breadcrumb {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.72rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin: 0 0 10px;
+}
+.qv-breadcrumb a {
+  color: var(--royal-blue);
+  text-decoration: none;
+}
+.qv-breadcrumb a:hover {
+  text-decoration: underline;
+}
 .quick-view-title {
   font-size: 2rem;
   margin: 6px 0 12px;
@@ -2972,9 +3013,6 @@ body.checkout-modal-open .checkout-modal {
     font-size: 11px;
     letter-spacing: 0.08em;
   }
-  .announcement-arrow {
-    height: 36px;
-  }
   .announcement-wa {
     display: none;
   }
@@ -3060,10 +3098,6 @@ body.checkout-modal-open .checkout-modal {
     font-size: 10.5px;
     letter-spacing: 0.06em;
     padding: 0 2px;
-  }
-  .announcement-arrow {
-    width: 44px;
-    height: 36px;
   }
 
   .section { padding: 72px max(18px, calc((100vw - 1240px) / 2)); }
@@ -3648,11 +3682,48 @@ body.checkout-modal-open .checkout-modal {
   font-weight: 600;
   text-decoration: underline;
   cursor: pointer;
-  padding: 0;
+  padding: 0 4px;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
   font-size: inherit;
 }
 .btn-text-link:hover {
   color: var(--black);
+}
+
+/* Minimum 44px accessible touch targets for interactive controls */
+.cart-drawer-close,
+.checkout-modal-close,
+.quick-view-close,
+.carousel-arrow,
+.quick-view-image-wrap .carousel-arrow {
+  min-width: 44px;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.qv-zoom-trigger {
+  min-height: 44px;
+  padding: 0 14px;
+}
+.qty-control-box .qty-btn,
+.drawer-qty-btn {
+  min-width: 44px;
+  min-height: 44px;
+}
+.drawer-remove-btn,
+.view-offers-link,
+.promo-remove-btn {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+}
+.promo-input-row input,
+.promo-input-row .button {
+  min-height: 44px;
+  height: 44px;
 }
 
 @media (max-width: 768px) {

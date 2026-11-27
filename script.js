@@ -651,12 +651,84 @@ let quickViewCarouselInstance = null;
 const GOOGLE_SHEETS_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQ1yF6fF2S8x5dH3u24uH2DNt8WOl9xZ_UTLA6JNmAWbn1XUroDBjS6M-GPXlSHLLtkSaXTllKNQz-n/pub?gid=0&single=true&output=csv';
 
 const CATEGORY_FALLBACKS = {
-  earrings: '/earrings.jpg',
-  rings: '/rings.jpg',
-  pendants: '/pendants.jpg',
-  bracelets: '/bracelets.jpg',
-  default: '/hero.jpg'
+  earrings: '/earrings.webp',
+  rings: '/rings.webp',
+  pendants: '/shell-pearl-pendant.webp',
+  bracelets: '/bracelets.webp',
+  default: '/shell-pearl-pendant.webp'
 };
+
+function updatePictureWithUrl(imgEl, primaryUrl, altText, fallbackUrl = '') {
+  if (!imgEl || !primaryUrl) return;
+  const picture = imgEl.closest('picture');
+  if (picture) {
+    const sourceEl = picture.querySelector('source');
+    if (sourceEl) {
+      if (/\.webp(\?|$)/i.test(primaryUrl)) {
+        sourceEl.setAttribute('srcset', primaryUrl);
+      } else {
+        sourceEl.remove();
+      }
+    }
+  }
+  if (fallbackUrl) {
+    imgEl.onerror = function() {
+      if (this.src !== fallbackUrl && !this.src.endsWith(fallbackUrl)) {
+        this.src = fallbackUrl;
+      }
+    };
+  }
+  imgEl.referrerPolicy = 'no-referrer';
+  if (altText) imgEl.alt = altText;
+  imgEl.src = primaryUrl;
+}
+
+function applyConfiguredFeatureImages(formattedProducts = []) {
+  const cfg = window.PANOOJA_CONFIG || {};
+  const list = Array.isArray(formattedProducts) ? formattedProducts : [];
+  const seaShellProduct =
+    list.find(p => /sea shell pearl pendant/i.test(p.name)) ||
+    list.find(p => p.categoryKey === 'pendants') ||
+    list[0] ||
+    null;
+
+  const resolveFeatureImg = (cfgVal, defaultLocalWebp, defaultAlt) => {
+    const cleanCfg = String(cfgVal || '').trim();
+    if (cleanCfg) {
+      return { url: cleanCfg, alt: defaultAlt };
+    }
+    if (seaShellProduct && seaShellProduct.img) {
+      return {
+        url: seaShellProduct.img,
+        alt: seaShellProduct.imageAlt || `${seaShellProduct.name} — PANOOJA`
+      };
+    }
+    return { url: defaultLocalWebp, alt: defaultAlt };
+  };
+
+  const heroImg = document.getElementById('heroImg');
+  if (heroImg) {
+    const heroCfg = String(cfg.HERO_IMAGE || '').trim();
+    if (heroCfg) {
+      updatePictureWithUrl(heroImg, heroCfg, heroImg.alt, '/shell-pearl-pendant.jpg');
+    } else if (seaShellProduct && seaShellProduct.img) {
+      const heroData = resolveFeatureImg('', '/shell-pearl-pendant.webp', heroImg.alt);
+      updatePictureWithUrl(heroImg, heroData.url, heroData.alt, '/shell-pearl-pendant.jpg');
+    }
+  }
+
+  const storyImg = document.getElementById('storyImg');
+  if (storyImg) {
+    const storyCfg = String(cfg.STORY_IMAGE || '').trim();
+    if (storyCfg) {
+      updatePictureWithUrl(storyImg, storyCfg, storyImg.alt, '/shell-pearl-pendant.jpg');
+    } else if (seaShellProduct && seaShellProduct.img) {
+      const storyData = resolveFeatureImg('', '/shell-pearl-pendant.webp', storyImg.alt);
+      updatePictureWithUrl(storyImg, storyData.url, storyData.alt, '/shell-pearl-pendant.jpg');
+    }
+  }
+}
+applyConfiguredFeatureImages([]);
 
 // Global Store of Loaded Products for Quick View, SEO & Filtering
 let loadedProductsMap = new Map();
@@ -674,17 +746,45 @@ function slugify(text) {
     .replace(/^-+|-+$/g, '');
 }
 
-// Default Storefront SEO Metadata (reverted on closing quick view)
+// Default Storefront SEO Metadata (reverted on closing quick view & dynamically kept in sync with live categories)
 const DEFAULT_SEO = {
-  title: 'PANOOJA — Waterproof & Anti-Tarnish Jewellery India | Earrings, Rings & Chains',
-  description: 'Shop waterproof, anti-tarnish everyday jewellery at PANOOJA India. 316L stainless steel earrings, rings, chains & bracelets with free shipping over ₹799.',
+  title: 'PANOOJA — Waterproof & Anti-Tarnish Jewellery India | Earrings, Pendants & Chains',
+  description: 'Shop waterproof, anti-tarnish everyday jewellery at PANOOJA India. 316L stainless steel earrings, pendants & chains with free shipping over ₹799.',
   canonical: 'https://www.panooja.com/',
   ogType: 'website',
   ogTitle: 'PANOOJA — Waterproof & Anti-Tarnish Jewellery India',
-  ogDescription: 'Shop waterproof, anti-tarnish everyday jewellery at PANOOJA India. 316L stainless steel earrings, rings, chains & bracelets with free shipping over ₹799.',
+  ogDescription: 'Shop waterproof, anti-tarnish everyday jewellery at PANOOJA India. 316L stainless steel earrings, pendants & chains with free shipping over ₹799.',
   ogImage: 'https://www.panooja.com/og-image.jpg',
   ogUrl: 'https://www.panooja.com/'
 };
+
+function normalizeSeoCategoryCopy(text, categoryKey) {
+  let out = String(text || '').trim();
+  if (!out) return '';
+  if (categoryKey === 'pendants') {
+    out = out
+      .replace(/Anti-Tarnish Necklaces?\b/gi, 'Anti-Tarnish Pendants & Chains')
+      .replace(/\bNecklaces\b/g, 'Pendants & Chains')
+      .replace(/\bnecklaces\b/g, 'pendants & chains');
+  }
+  return out;
+}
+
+function updateHomepageSeoFromLiveCategories(activeCategoryKeys) {
+  const activeLabels = CATEGORY_NAV_CONFIG
+    .filter(c => activeCategoryKeys.includes(c.key))
+    .map(c => c.label);
+  const categoryListText = activeLabels.length > 0 ? activeLabels.join(', ') : 'Jewellery';
+  const categoryListLower = activeLabels.length > 0 ? activeLabels.join(', ').toLowerCase() : 'everyday jewellery';
+
+  DEFAULT_SEO.title = `PANOOJA — Waterproof & Anti-Tarnish Jewellery India | ${categoryListText}`;
+  DEFAULT_SEO.description = `Shop waterproof, anti-tarnish everyday jewellery at PANOOJA India. 316L stainless steel ${categoryListLower} with free shipping over ₹799.`;
+  DEFAULT_SEO.ogDescription = DEFAULT_SEO.description;
+
+  if (!document.body.classList.contains('quick-view-open')) {
+    setPageMetadata(DEFAULT_SEO);
+  }
+}
 
 function toAbsoluteSeoUrl(url) {
   if (!url) return DEFAULT_SEO.ogImage;
@@ -1148,25 +1248,26 @@ function updateCategoryVisibility(categoryCounts) {
     sessionStorage.setItem('panooja_live_categories', JSON.stringify(activeCategoryKeys));
   } catch (e) {}
   renderHeaderCategoryLinks(activeCategoryKeys);
+  updateHomepageSeoFromLiveCategories(activeCategoryKeys);
 }
 
 // Use the first live product image in each category for its Shop-by-Category card
 function updateCategoryCardImages(firstImageByCategory) {
-  document.querySelectorAll('#collections .collection-card[data-filter-target] img.card-image').forEach(img => {
-    const card = img.closest('.collection-card');
-    const target = card ? card.getAttribute('data-filter-target') : '';
+  document.querySelectorAll('#collections .collection-card[data-filter-target]').forEach(card => {
+    const img = card.querySelector('img.card-image');
+    if (!img) return;
+    const target = card.getAttribute('data-filter-target') || '';
     const liveImg = firstImageByCategory.get(target);
-    if (!liveImg) return;
-    if (!img.dataset.defaultSrc) {
-      img.dataset.defaultSrc = img.getAttribute('src') || '';
+    const fallbackJpg = img.getAttribute('data-fallback-jpg') || '';
+    const fallbackWebp = card.querySelector('source[data-fallback-srcset]')?.getAttribute('data-fallback-srcset') || '';
+
+    if (liveImg) {
+      updatePictureWithUrl(img, liveImg, img.alt, fallbackJpg || CATEGORY_FALLBACKS.default);
+    } else if (!card.hidden && (fallbackWebp || fallbackJpg)) {
+      const sourceEl = card.querySelector('source');
+      if (sourceEl && fallbackWebp) sourceEl.setAttribute('srcset', fallbackWebp);
+      if (fallbackJpg) img.src = fallbackJpg;
     }
-    img.referrerPolicy = 'no-referrer';
-    img.onerror = function() {
-      if (this.dataset.defaultSrc && this.src !== this.dataset.defaultSrc) {
-        this.src = this.dataset.defaultSrc;
-      }
-    };
-    img.src = liveImg;
   });
 }
 
@@ -1186,7 +1287,7 @@ function renderMobileQuickProducts(products) {
   rail.innerHTML = slice.map(p => `
     <a href="/product/${escapeHTML(p.slug)}" class="mobile-quick-card quick-view-trigger" data-sku="${escapeHTML(p.sku)}" data-slug="${escapeHTML(p.slug)}">
       <div class="mobile-quick-img">
-        <img src="${escapeHTML(p.img)}" alt="${escapeHTML(p.imageAlt)}" loading="eager" referrerPolicy="no-referrer" onerror="if(this.src!=='${p.fallbackImg}'){this.src='${p.fallbackImg}';}" />
+        <img src="${escapeHTML(p.img)}" alt="${escapeHTML(p.imageAlt)}" loading="lazy" referrerPolicy="no-referrer" onerror="if(this.src!=='${p.fallbackImg}'){this.src='${p.fallbackImg}';}" />
       </div>
       <div class="mobile-quick-meta">
         <span class="mobile-quick-name">${escapeHTML(p.name)}</span>
@@ -1361,13 +1462,16 @@ async function loadLiveProducts() {
       const isOutOfStock = stockStatus.toLowerCase().includes('out of stock');
       const isLowStock = stockStatus.toLowerCase().includes('low stock');
 
-      // SEO Fields from Connected Google Sheet
+      // SEO Fields from Connected Google Sheet (normalized to display category names like "Pendants & Chains")
       const rawSlug = (item['SEO URL Slug (Auto)'] || item['SEO URL Slug'] || item['Slug'] || '').trim().replace(/^\/product\//, '').replace(/^\//, '');
       const slug = rawSlug || slugify(name || sku);
-      const seoTitle = (item['SEO Title (Auto)'] || item['SEO Title'] || '').trim() || `${name} | Anti-Tarnish Jewellery — PANOOJA`;
-      const seoDescription = (item['SEO Meta Description (Auto)'] || item['SEO Meta Description'] || '').trim() || popupDesc || `${name} — Waterproof, anti-tarnish 316L stainless steel jewellery by PANOOJA.`;
+      const rawSeoTitle = (item['SEO Title (Auto)'] || item['SEO Title'] || '').trim() || `${name} | Anti-Tarnish ${category} — PANOOJA`;
+      const rawSeoDesc = (item['SEO Meta Description (Auto)'] || item['SEO Meta Description'] || '').trim() || popupDesc || `${name} — Waterproof, anti-tarnish 316L stainless steel ${category} by PANOOJA.`;
+      const seoTitle = normalizeSeoCategoryCopy(rawSeoTitle, categoryKey);
+      const seoDescription = normalizeSeoCategoryCopy(rawSeoDesc, categoryKey);
       const seoKeywords = (item['SEO Keywords (Auto)'] || item['SEO Keywords'] || '').trim();
-      const imageAlt = (item['Image Alt Text (Auto)'] || item['Image Alt Text'] || '').trim() || `${name} — Anti-Tarnish Waterproof Jewellery by PANOOJA`;
+      const rawImageAlt = (item['Image Alt Text (Auto)'] || item['Image Alt Text'] || '').trim() || `${name} — Anti-Tarnish Waterproof ${category} by PANOOJA`;
+      const imageAlt = normalizeSeoCategoryCopy(rawImageAlt, categoryKey);
       const productUrl = `/product/${slug}`;
 
       // Parse Current Stock numeric value
@@ -1518,9 +1622,10 @@ async function loadLiveProducts() {
     // Inject SEO Schema for Products (Individual Product Schema per item)
     injectProductSchema(formattedProducts);
 
-    // Hide empty categories, sync category images, render mobile quick row, and apply active filter
+    // Hide empty categories, sync category/feature images, render mobile quick row, and apply active filter
     updateCategoryVisibility(categoryCounts);
     updateCategoryCardImages(firstImageByCategory);
+    applyConfiguredFeatureImages(formattedProducts);
     renderMobileQuickProducts(formattedProducts);
     applyCategoryFilter();
 
@@ -1584,6 +1689,8 @@ function openQuickView(skuOrSlug, updateUrl = true) {
   const descEl = document.getElementById('quickViewDesc');
   const qtyEl = document.getElementById('quickViewQty');
   const addBtn = document.getElementById('quickViewAddBtn');
+  const staleWaFallback = document.getElementById('qvWhatsappFallbackLink');
+  if (staleWaFallback) staleWaFallback.remove();
 
   // Destroy previous quick-view carousel if exists
   if (quickViewCarouselInstance) {
@@ -1645,6 +1752,30 @@ function openQuickView(skuOrSlug, updateUrl = true) {
     }
   }
 
+  const breadcrumbEl = document.getElementById('quickViewBreadcrumb');
+  if (breadcrumbEl) {
+    const catHref = product.categoryKey ? `/?category=${encodeURIComponent(product.categoryKey)}#shop` : '/#shop';
+    breadcrumbEl.innerHTML = `<a href="/" data-crumb="home">Home</a> <span aria-hidden="true">/</span> <a href="${escapeHTML(catHref)}" data-crumb="cat" data-cat-filter="${escapeHTML(product.categoryKey || 'all')}">${escapeHTML(product.category)}</a> <span aria-hidden="true">/</span> <span>${escapeHTML(product.name)}</span>`;
+    breadcrumbEl.querySelectorAll('a').forEach(a => {
+      a.addEventListener('click', (e) => {
+        if (!document.getElementById('productGrid')) return;
+        e.preventDefault();
+        const catFilter = a.getAttribute('data-cat-filter');
+        closeQuickView(true);
+        if (catFilter) {
+          const btn = document.querySelector(`.category-filter-wrap .filter-btn[data-filter="${catFilter}"]`);
+          if (btn) {
+            document.querySelectorAll('.category-filter-wrap .filter-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            applyCategoryFilter();
+            setActiveDesktopNav(catFilter);
+          }
+          const shopEl = document.getElementById('shop');
+          if (shopEl) shopEl.scrollIntoView({ behavior: 'smooth' });
+        }
+      });
+    });
+  }
   if (catEl) catEl.textContent = product.category;
   if (titleEl) titleEl.textContent = product.name;
   if (priceEl) priceEl.textContent = `₹${product.finalPrice.toLocaleString('en-IN')}`;
@@ -1964,7 +2095,7 @@ document.querySelectorAll('a[href*="wa.me/"]').forEach((anchor) => {
   anchor.href = anchor.href.replace(/wa\.me\/\d+/i, `wa.me/${getPanoojaWhatsAppNumber()}`);
 });
 
-// Quick View Buy via WhatsApp
+// Quick View Buy via WhatsApp (with popup-blocker fallback button, no alert())
 const qvWhatsappBtn = document.getElementById('quickViewWhatsappBtn');
 if (qvWhatsappBtn) {
   qvWhatsappBtn.addEventListener('click', () => {
@@ -1977,7 +2108,29 @@ if (qvWhatsappBtn) {
 
 Please share payment details and dispatch time!`;
     const url = `https://wa.me/${getPanoojaWhatsAppNumber()}?text=${encodeURIComponent(msg)}`;
-    window.open(url, '_blank');
+    let popupBlocked = false;
+    try {
+      const win = window.open(url, '_blank', 'noopener,noreferrer');
+      if (!win || win.closed || typeof win.closed === 'undefined') {
+        popupBlocked = true;
+      }
+    } catch (e) {
+      popupBlocked = true;
+    }
+
+    const existingFallback = document.getElementById('qvWhatsappFallbackLink');
+    if (existingFallback) existingFallback.remove();
+    if (popupBlocked && qvWhatsappBtn.parentNode) {
+      const linkBtn = document.createElement('a');
+      linkBtn.id = 'qvWhatsappFallbackLink';
+      linkBtn.href = url;
+      linkBtn.target = '_blank';
+      linkBtn.rel = 'noopener noreferrer';
+      linkBtn.className = 'button button-whatsapp';
+      linkBtn.style.cssText = 'width: 100%; margin-top: 8px; text-decoration: none;';
+      linkBtn.textContent = 'Open WhatsApp to send your order';
+      qvWhatsappBtn.parentNode.appendChild(linkBtn);
+    }
   });
 }
 
