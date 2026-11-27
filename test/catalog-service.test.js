@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { calculateOrderTotal, getCatalog } from '../api/catalog-service.js';
+import { calculateOrderTotal, getCatalog, extractProductSpecs } from '../api/catalog-service.js';
 
 test('Catalog Service - fetches and caches products', async () => {
   const catalog = await getCatalog();
@@ -85,4 +85,23 @@ test('Catalog Service - contains no hardcoded static fallback items', async () =
   if (pnj5) {
     assert.notEqual(pnj5.name, 'Cat Eye Stud Earrings (Fallback)');
   }
+});
+
+test('Catalog Service - extracts filled optional sheet specs and omits empty fields', () => {
+  const specs = extractProductSpecs({
+    'Finish': '18K gold-tone PVD',
+    'Stones': 'Faux Pearl',
+    'Size': '',
+    'Chain Length': '45 cm',
+    'Closure': '   ',
+    'Sold As': 'Single Pendant & Chain',
+    'Weight': ''
+  });
+  assert.deepEqual(specs, [
+    { label: 'Finish', value: '18K gold-tone PVD' },
+    { label: 'Stones', value: 'Faux Pearl' },
+    { label: 'Chain Length', value: '45 cm' },
+    { label: 'Sold As', value: 'Single Pendant & Chain' }
+  ]);
+  assert.deepEqual(extractProductSpecs({}), []);
 });

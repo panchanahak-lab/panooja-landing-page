@@ -1,4 +1,5 @@
 // api/order-store.js - Persistent Server-Side Order Management Store
+import os from 'os';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -6,24 +7,35 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const DATA_DIR = path.resolve(__dirname, '../data');
-const ORDERS_FILE = path.join(DATA_DIR, 'orders.json');
+const PRIMARY_DATA_DIR = path.resolve(__dirname, '../data');
+const FALLBACK_DATA_DIR = path.join(os.tmpdir(), 'panooja-data');
 
-// Ensure data directory exists
-function ensureDataDir() {
-  if (!fs.existsSync(DATA_DIR)) {
-    fs.mkdirSync(DATA_DIR, { recursive: true });
+function resolveOrdersFile() {
+  for (const dir of [PRIMARY_DATA_DIR, FALLBACK_DATA_DIR]) {
+    try {
+      if (!fs.existsSync(dir)) {
+        fs.mkdirSync(dir, { recursive: true });
+      }
+      const file = path.join(dir, 'orders.json');
+      if (!fs.existsSync(file)) {
+        fs.writeFileSync(file, JSON.stringify([], null, 2), 'utf-8');
+      } else {
+        fs.accessSync(dir, fs.constants.W_OK);
+      }
+      return file;
+    } catch (e) {
+      // Fall through to /tmp on read-only serverless environments like Vercel
+    }
   }
-  if (!fs.existsSync(ORDERS_FILE)) {
-    fs.writeFileSync(ORDERS_FILE, JSON.stringify([], null, 2), 'utf-8');
-  }
+  return null;
 }
 
 // Read all orders safely
 export function getAllOrders() {
-  ensureDataDir();
+  const ordersFile = resolveOrdersFile();
+  if (!ordersFile) return [];
   try {
-    const raw = fs.readFileSync(ORDERS_FILE, 'utf-8');
+    const raw = fs.readFileSync(ordersFile, 'utf-8');
     return JSON.parse(raw) || [];
   } catch (err) {
     console.error('Error reading orders file:', err.message);
@@ -33,10 +45,17 @@ export function getAllOrders() {
 
 // Write orders atomically
 function writeOrders(orders) {
-  ensureDataDir();
-  const tmpFile = ORDERS_FILE + '.tmp';
-  fs.writeFileSync(tmpFile, JSON.stringify(orders, null, 2), 'utf-8');
-  fs.renameSync(tmpFile, ORDERS_FILE);
+  const ordersFile = resolveOrdersFile();
+  if (!ordersFile) return false;
+  try {
+    const tmpFile = ordersFile + '.tmp';
+    fs.writeFileSync(tmpFile, JSON.stringify(orders, null, 2), 'utf-8');
+    fs.renameSync(tmpFile, ordersFile);
+    return true;
+  } catch (err) {
+    console.error('Error writing orders file:', err.message);
+    return false;
+  }
 }
 
 // Save or insert a new order record

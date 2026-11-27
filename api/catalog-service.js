@@ -107,6 +107,57 @@ export function slugify(text) {
     .replace(/^-+|-+$/g, '');
 }
 
+function getCatalogField(item, ...keys) {
+  if (!item) return '';
+  for (const key of keys) {
+    if (Object.prototype.hasOwnProperty.call(item, key) && item[key] !== undefined && item[key] !== null) {
+      const val = String(item[key]).trim();
+      if (val !== '') return val;
+    }
+  }
+  const normalizedTargets = keys.map(k => k.toLowerCase().trim());
+  for (const [k, v] of Object.entries(item)) {
+    if (normalizedTargets.includes(k.toLowerCase().trim()) && v !== undefined && v !== null) {
+      const val = String(v).trim();
+      if (val !== '') return val;
+    }
+  }
+  return '';
+}
+
+export function getDisplayCategoryName(rawCategory, categoryGroup) {
+  const group = categoryGroup || normalizeCategoryGroup(rawCategory);
+  if (group === 'earrings') return 'Earrings';
+  if (group === 'rings') return 'Rings';
+  if (group === 'pendants') return 'Pendants & Chains';
+  if (group === 'bracelets') return 'Kadas & Bracelets';
+  return String(rawCategory || '').trim() || 'Jewellery';
+}
+
+export function normalizeSeoCategoryCopy(text, categoryGroup) {
+  let out = String(text || '').trim();
+  if (!out) return '';
+  if (categoryGroup === 'pendants') {
+    out = out
+      .replace(/Anti-Tarnish Necklaces?\b/gi, 'Anti-Tarnish Pendants & Chains')
+      .replace(/\bNecklaces\b/g, 'Pendants & Chains')
+      .replace(/\bnecklaces\b/g, 'pendants & chains');
+  }
+  return out;
+}
+
+export function extractProductSpecs(item) {
+  return [
+    { label: 'Finish', value: getCatalogField(item, 'Finish') },
+    { label: 'Stones', value: getCatalogField(item, 'Stones', 'Stone') },
+    { label: 'Size', value: getCatalogField(item, 'Size') },
+    { label: 'Chain Length', value: getCatalogField(item, 'Chain Length') },
+    { label: 'Closure', value: getCatalogField(item, 'Closure') },
+    { label: 'Sold As', value: getCatalogField(item, 'Sold As') },
+    { label: 'Weight', value: getCatalogField(item, 'Weight') }
+  ].filter(s => s.value !== '');
+}
+
 // Fetch live catalog from Google Sheets or memory cache
 export async function fetchCatalog(forceRefresh = false) {
   const now = Date.now();
@@ -166,20 +217,36 @@ export async function fetchCatalog(forceRefresh = false) {
         item['Drive Link 4']
       ].map(normalizeCatalogImageUrl).filter(Boolean)));
 
+      const rawCategory = item['Category'] || 'Jewellery';
+      const categoryKey = normalizeCategoryGroup(rawCategory);
+      const displayCategory = getDisplayCategoryName(rawCategory, categoryKey);
       const rawSlug = (item['SEO URL Slug (Auto)'] || item['SEO URL Slug'] || '').trim().replace(/^\/product\//, '').replace(/^\//, '');
       const productName = item['Product Name'] || sku;
       const slug = rawSlug || slugify(productName || sku);
-      const seoTitle = (item['SEO Title (Auto)'] || item['SEO Title'] || '').trim() || `${productName} | Anti-Tarnish Jewellery — PANOOJA`;
-      const seoDescription = (item['SEO Meta Description (Auto)'] || item['SEO Meta Description'] || '').trim() || item['Description'] || 'Modern waterproof and anti-tarnish everyday jewellery by PANOOJA.';
+      const rawShortDesc = getCatalogField(item, 'Description');
+      const longDesc = getCatalogField(item, 'Description (long)', 'Description (Long)', 'Long Description');
+      const popupDesc = longDesc || (rawShortDesc.toLowerCase() !== productName.toLowerCase() ? rawShortDesc : '');
+
+      const rawSeoTitle = (item['SEO Title (Auto)'] || item['SEO Title'] || '').trim() || `${productName} | Anti-Tarnish ${displayCategory} — PANOOJA`;
+      const rawSeoDesc = (item['SEO Meta Description (Auto)'] || item['SEO Meta Description'] || '').trim() || popupDesc || rawShortDesc || 'Modern waterproof and anti-tarnish everyday jewellery by PANOOJA.';
+      const seoTitle = normalizeSeoCategoryCopy(rawSeoTitle, categoryKey);
+      const seoDescription = normalizeSeoCategoryCopy(rawSeoDesc, categoryKey);
       const seoKeywords = (item['SEO Keywords (Auto)'] || item['SEO Keywords'] || '').trim();
-      const imageAlt = (item['Image Alt Text (Auto)'] || item['Image Alt Text'] || '').trim() || `${productName} — Anti-Tarnish Waterproof Jewellery by PANOOJA`;
+      const rawAlt = (item['Image Alt Text (Auto)'] || item['Image Alt Text'] || '').trim() || `${productName} — Anti-Tarnish Waterproof ${displayCategory} by PANOOJA`;
+      const imageAlt = normalizeSeoCategoryCopy(rawAlt, categoryKey);
+
+      const specs = extractProductSpecs(item);
 
       catalogMap.set(sku, {
         sku,
         slug,
         name: productName,
-        category: item['Category'] || 'Jewellery',
-        description: item['Description'] || '',
+        category: displayCategory,
+        categoryKey,
+        description: rawShortDesc,
+        descriptionLong: longDesc,
+        popupDesc,
+        specs,
         price: cleanPrice,
         mrp: cleanMrp,
         isActive,

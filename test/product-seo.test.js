@@ -29,7 +29,8 @@ test('Product SEO - server renders unique SEO tags and Open Graph tags for /prod
   const html = await res.text();
 
   // Verify unique per-product title
-  assert.ok(html.includes(`<title>${firstProduct.seoTitle}</title>`), 'HTML must include unique SEO Title');
+  const expectedTitle = firstProduct.seoTitle.replace(/&/g, '&amp;');
+  assert.ok(html.includes(`<title>${expectedTitle}</title>`), 'HTML must include unique SEO Title');
 
   // Verify unique per-product description
   const expectedDesc = firstProduct.seoDescription.replace(/&/g, '&amp;');
@@ -39,7 +40,7 @@ test('Product SEO - server renders unique SEO tags and Open Graph tags for /prod
   assert.ok(html.includes(`rel="canonical" href="https://www.panooja.com/product/${firstProduct.slug}"`), 'HTML must include canonical link to unique product URL');
 
   // Verify Open Graph tags
-  assert.ok(html.includes(`property="og:title" content="${firstProduct.seoTitle}"`), 'HTML must include og:title');
+  assert.ok(html.includes(`property="og:title" content="${expectedTitle}"`), 'HTML must include og:title');
   assert.ok(html.includes(expectedDesc), 'HTML must include og:description');
   assert.ok(html.includes(`property="og:url" content="https://www.panooja.com/product/${firstProduct.slug}"`), 'HTML must include og:url');
   assert.ok(html.includes('property="og:type" content="product"'), 'HTML must set og:type to product');
@@ -49,6 +50,10 @@ test('Product SEO - server renders unique SEO tags and Open Graph tags for /prod
   assert.ok(html.includes('"@type": "Product"'), 'Schema must declare @type Product');
   assert.ok(html.includes(`"sku": "${firstProduct.sku}"`), 'Schema must include product SKU');
   assert.ok(html.includes(`"price": ${firstProduct.price}`), 'Schema must include INR price');
+  assert.ok(html.includes(`"category": "${firstProduct.category}"`), 'Schema must use normalized display category name');
+  assert.ok(!html.includes('"category": "Necklaces"'), 'Schema must not use old Necklaces label');
+  assert.ok(!html.includes('Anti-Tarnish Necklaces'), 'HTML SEO metadata must use Pendants & Chains instead of Necklaces');
+  assert.ok(html.includes('id="quickViewBreadcrumb"'), 'Product page must render breadcrumb navigation');
   assert.ok(!html.includes('"material"'), 'Schema must not include removed material claims');
   assert.ok(html.includes('"shippingDetails"'), 'Schema must include shippingDetails');
   assert.ok(html.includes('"hasMerchantReturnPolicy"'), 'Schema must include hasMerchantReturnPolicy');

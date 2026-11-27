@@ -13,5 +13,8 @@ window.PANOOJA_CONFIG = {
   GRIEVANCE_PHONE: '+91 7984528870',
   GRIEVANCE_EMAIL: '',
   SHIPPING_CITY: 'Surat',
-  COURIER_PARTNERS: ['DTDC', 'Delhivery', 'BlueDart', 'The Professional Couriers']
+  COURIER_PARTNERS: ['DTDC', 'Delhivery', 'BlueDart', 'The Professional Couriers'],
+  // Custom Hero & Story photos (leave blank '' to use the Sea Shell Pearl Pendant main photo automatically)
+  HERO_IMAGE: '',
+  STORY_IMAGE: ''
 };

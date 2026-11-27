@@ -246,7 +246,7 @@ function syncHomepagePromoSection() {
 
   const offerDesc = featured.bannerTitle || (
     featured.discountType === 'percentage' ? `${featured.discountValue}% Off`
-      : featured.discountType === 'free_shipping' ? 'Free Express Shipping'
+      : featured.discountType === 'free_shipping' ? 'Free Shipping'
         : `₹${featured.discountValue} Off`
   );
   const minText = featured.minOrderValue > 0 ? ` above ₹${featured.minOrderValue.toLocaleString('en-IN')}` : '';
@@ -418,7 +418,7 @@ function calculateDiscount(subtotal, cartItems = cart) {
       const shippingSaved = subtotal < FREE_SHIPPING_THRESHOLD ? STANDARD_SHIPPING_FEE : 0;
       savingsText = shippingSaved > 0
         ? `Coupon ${offer.code} applied — You save ₹${shippingSaved} on shipping!`
-        : `Coupon ${offer.code} applied — Free Express Shipping unlocked!`;
+        : `Coupon ${offer.code} applied — Free Shipping unlocked!`;
     } else {
       savingsText = `Coupon ${offer.code} applied — You save ₹${amount.toLocaleString('en-IN')}`;
     }
@@ -523,17 +523,17 @@ function renderCartDrawer() {
   // Update Free Shipping Progress Bar
   if (shippingContainer && shippingText && shippingFill) {
     if (subtotal === 0) {
-      shippingText.innerHTML = `Add <strong>₹${FREE_SHIPPING_THRESHOLD}</strong> more for FREE Express Shipping! 🚚`;
+      shippingText.innerHTML = `Add <strong>₹${FREE_SHIPPING_THRESHOLD}</strong> more for FREE Shipping! 🚚`;
       shippingFill.style.width = '0%';
       shippingFill.classList.remove('unlocked');
     } else if (subtotal >= FREE_SHIPPING_THRESHOLD || discountInfo.isFreeShip) {
-      shippingText.innerHTML = `🎉 <strong>Congratulations!</strong> You've unlocked FREE Express Shipping!`;
+      shippingText.innerHTML = `🎉 <strong>Congratulations!</strong> You've unlocked FREE Shipping!`;
       shippingFill.style.width = '100%';
       shippingFill.classList.add('unlocked');
     } else {
       const remaining = FREE_SHIPPING_THRESHOLD - subtotal;
       const percent = Math.min(100, Math.round((subtotal / FREE_SHIPPING_THRESHOLD) * 100));
-      shippingText.innerHTML = `Add <strong>₹${remaining.toLocaleString('en-IN')}</strong> more for FREE Express Shipping! 🚚`;
+      shippingText.innerHTML = `Add <strong>₹${remaining.toLocaleString('en-IN')}</strong> more for FREE Shipping! 🚚`;
       shippingFill.style.width = `${percent}%`;
       shippingFill.classList.remove('unlocked');
     }
@@ -966,8 +966,8 @@ function readAndValidateCheckoutFields(isPageCheckout = false) {
   };
 }
 
-// Confirmation screen shown after tapping Order via WhatsApp
-function showWhatsappConfirmationScreen({ inquiryRef, total, waUrl }) {
+// Confirmation screen shown after tapping Order via WhatsApp (keeps bag intact until user taps "I've sent my order")
+function showWhatsappConfirmationScreen({ inquiryRef, total, waUrl, popupBlocked = false }) {
   const existing = document.getElementById('whatsappOrderConfirmModal');
   if (existing) existing.remove();
 
@@ -982,25 +982,35 @@ function showWhatsappConfirmationScreen({ inquiryRef, total, waUrl }) {
     display: flex; align-items: center; justify-content: center; z-index: 9999; padding: 20px;
   `;
 
+  const blockedNotice = popupBlocked
+    ? `<div id="waPopupBlockedNotice" style="background: #FEF3C7; border: 1px solid #F59E0B; color: #92400E; padding: 10px 12px; border-radius: 6px; font-size: 0.84rem; line-height: 1.45; margin-bottom: 14px; text-align: left;">
+        Your browser blocked the automatic WhatsApp pop-up. Tap <strong>Open WhatsApp to send your order</strong> below to continue.
+      </div>`
+    : '';
+
   modal.innerHTML = `
     <div style="background: #FFFFFF; max-width: 480px; width: 100%; border-radius: 8px; padding: 34px 26px; text-align: center; box-shadow: 0 20px 60px rgba(0,0,0,0.3); border: 1px solid #D9DEE7;">
       <div style="width: 56px; height: 56px; background: rgba(37, 211, 102, 0.12); border: 2px solid #25D366; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 16px; color: #1EBE5D; font-size: 1.6rem;">
         ✓
       </div>
-      <h3 id="waConfirmTitle" style="font-family: var(--font-serif); font-size: 1.85rem; color: #050505; margin: 0 0 10px;">Order Request Ready on WhatsApp</h3>
-      <p style="font-size: 0.94rem; color: #242424; margin: 0 0 18px; line-height: 1.55;">
-        Your order request has been sent on WhatsApp. We&rsquo;ll confirm stock and share payment details within <strong>${escapeCartHtml(businessHours)}</strong>.
+      <h3 id="waConfirmTitle" style="font-family: var(--font-serif); font-size: 1.85rem; color: #050505; margin: 0 0 10px;">Send Your Order on WhatsApp</h3>
+      <p style="font-size: 0.92rem; color: #242424; margin: 0 0 16px; line-height: 1.55;">
+        We keep your bag saved here until you confirm below. Once sent on WhatsApp, we&rsquo;ll confirm stock and share UPI payment details within <strong>${escapeCartHtml(businessHours)}</strong>.
       </p>
+      ${blockedNotice}
       <div style="background: #F5F6F8; border: 1px solid #D9DEE7; border-radius: 6px; padding: 12px 14px; text-align: left; font-size: 0.84rem; margin-bottom: 20px; line-height: 1.7; color: #242424;">
         <div><strong>Reference:</strong> #${escapeCartHtml(inquiryRef)}</div>
         <div><strong>Estimated Total:</strong> ₹${Number(total || 0).toLocaleString('en-IN')} <span style="color:#6B7280;">(Inclusive of all taxes)</span></div>
       </div>
       <div style="display: flex; flex-direction: column; gap: 10px;">
-        <a href="${escapeCartHtml(waUrl)}" target="_blank" rel="noopener noreferrer" class="button button-whatsapp" style="width: 100%; text-decoration: none;">
-          Open WhatsApp Chat
+        <a href="${escapeCartHtml(waUrl)}" target="_blank" rel="noopener noreferrer" id="waConfirmOpenLink" class="button button-whatsapp" style="width: 100%; text-decoration: none;">
+          Open WhatsApp to send your order
         </a>
+        <button type="button" class="button button-primary" id="waConfirmSentBtn" style="width: 100%;">
+          I&rsquo;ve sent my order
+        </button>
         <button type="button" class="button button-secondary" id="waConfirmCloseBtn" style="width: 100%;">
-          Continue Shopping
+          Keep Bag &amp; Go Back
         </button>
       </div>
     </div>
@@ -1008,6 +1018,15 @@ function showWhatsappConfirmationScreen({ inquiryRef, total, waUrl }) {
 
   document.body.appendChild(modal);
 
+  const sentBtn = document.getElementById('waConfirmSentBtn');
+  if (sentBtn) {
+    sentBtn.addEventListener('click', () => {
+      cart = [];
+      appliedCoupon = null;
+      saveCart();
+      modal.remove();
+    });
+  }
   const closeBtn = document.getElementById('waConfirmCloseBtn');
   if (closeBtn) {
     closeBtn.addEventListener('click', () => modal.remove());
@@ -1042,7 +1061,7 @@ function orderViaWhatsApp(isPageCheckout = false) {
   if (discountInfo.valid && discountInfo.amount > 0) {
     discountLine = `• Discount (${discountInfo.code}): -₹${discountInfo.amount.toLocaleString('en-IN')}\n`;
   } else if (discountInfo.valid && discountInfo.isFreeShip) {
-    discountLine = `• Coupon Applied (${discountInfo.code}): Free Express Shipping\n`;
+    discountLine = `• Coupon Applied (${discountInfo.code}): Free Shipping\n`;
   }
 
   const message = `✨ *PANOOJA ORDER INQUIRY* ✨
@@ -1060,7 +1079,7 @@ ${landmarkLine}• City: ${city}
 ${itemsListText}
 💰 *Estimated Payable (Inclusive of all taxes):*
 • Subtotal: ₹${subtotal.toLocaleString('en-IN')}
-${discountLine}• Pan-India Express Delivery: ${shippingFee === 0 ? 'FREE' : '₹' + shippingFee}
+${discountLine}• Pan-India Delivery (2–5 business days): ${shippingFee === 0 ? 'FREE' : '₹' + shippingFee}
 • *Total Amount: ₹${grandTotal.toLocaleString('en-IN')}*
 
 Please confirm stock and share UPI payment details!`;
@@ -1085,13 +1104,19 @@ Please confirm stock and share UPI payment details!`;
     }).catch(e => console.debug('Inquiry record note:', e));
   } catch (e) {}
 
-  // Open WhatsApp in new tab safely and show confirmation screen
+  // Open WhatsApp safely and detect popup blocking without alert()
+  let popupBlocked = false;
   try {
-    window.open(waUrl, '_blank', 'noopener,noreferrer');
-  } catch (e) {}
+    const waWin = window.open(waUrl, '_blank', 'noopener,noreferrer');
+    if (!waWin || waWin.closed || typeof waWin.closed === 'undefined') {
+      popupBlocked = true;
+    }
+  } catch (e) {
+    popupBlocked = true;
+  }
 
   if (!isPageCheckout) closeCheckoutModal();
-  showWhatsappConfirmationScreen({ inquiryRef, total: grandTotal, waUrl });
+  showWhatsappConfirmationScreen({ inquiryRef, total: grandTotal, waUrl, popupBlocked });
 }
 
 // =============================================================
@@ -1325,7 +1350,7 @@ function showPaymentSuccessDialog(details) {
         ✓
       </div>
       <h3 style="font-family: var(--font-serif); font-size: 2rem; color: #050505; margin: 0 0 8px;">Payment Successful!</h3>
-      <p style="font-size: 0.95rem; color: #242424; margin: 0 0 20px; line-height: 1.5;">Thank you for shopping with PANOOJA. Your order has been placed and is scheduled for express dispatch.</p>
+      <p style="font-size: 0.95rem; color: #242424; margin: 0 0 20px; line-height: 1.5;">Thank you for shopping with PANOOJA. Your order has been placed and will be dispatched within 24 hours.</p>
       
       <div style="background: #F5F6F8; border: 1px solid #D9DEE7; border-radius: 6px; padding: 16px; text-align: left; font-size: 0.85rem; margin-bottom: 24px; line-height: 1.8; color: #242424;">
         <div><strong>Order ID:</strong> ${details.orderId}</div>
@@ -1512,7 +1537,7 @@ document.addEventListener('DOMContentLoaded', () => {
         id: btn.getAttribute('data-id') || ('p_' + Date.now()),
         title: btn.getAttribute('data-title') || 'PANOOJA Everyday Jewellery',
         price: cleanPrice,
-        img: btn.getAttribute('data-img') || '/hero.jpg',
+        img: btn.getAttribute('data-img') || '/shell-pearl-pendant.webp',
         category: btn.getAttribute('data-category') || 'Jewellery'
       };
       addToCart(product);
@@ -1548,11 +1573,11 @@ document.addEventListener('DOMContentLoaded', () => {
             <p style="margin: 5px 0; color: var(--charcoal); font-weight: 600;">₹${item.price.toLocaleString('en-IN')}</p>
           </div>
           <div style="display: flex; align-items: center; gap: 8px;">
-            <button class="qty-btn" data-action="minus" data-id="${item.id}" style="padding: 4px 10px; border: 1px solid var(--light-grey); background: var(--soft-cool-white); cursor: pointer;">-</button>
+            <button class="qty-btn" data-action="minus" data-id="${item.id}" style="min-width: 44px; min-height: 44px; padding: 4px 10px; border: 1px solid var(--light-grey); background: var(--soft-cool-white); cursor: pointer;">-</button>
             <span>${item.quantity}</span>
-            <button class="qty-btn" data-action="plus" data-id="${item.id}" style="padding: 4px 10px; border: 1px solid var(--light-grey); background: var(--soft-cool-white); cursor: pointer;">+</button>
+            <button class="qty-btn" data-action="plus" data-id="${item.id}" style="min-width: 44px; min-height: 44px; padding: 4px 10px; border: 1px solid var(--light-grey); background: var(--soft-cool-white); cursor: pointer;">+</button>
           </div>
-          <button class="remove-btn" data-id="${item.id}" style="border: none; background: transparent; color: #DC2626; cursor: pointer; text-decoration: underline;">Remove</button>
+          <button class="remove-btn" data-id="${item.id}" style="min-height: 44px; padding: 0 8px; border: none; background: transparent; color: #DC2626; cursor: pointer; text-decoration: underline;">Remove</button>
         `;
         legacyCartContainer.appendChild(itemEl);
       });

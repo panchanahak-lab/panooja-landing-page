@@ -3,9 +3,9 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>PANOOJA — Waterproof &amp; Anti-Tarnish Jewellery India | Earrings, Rings &amp; Chains</title>
+  <title>PANOOJA — Waterproof &amp; Anti-Tarnish Jewellery India | Earrings, Pendants &amp; Chains</title>
   
-  <meta name="description" content="Shop waterproof, anti-tarnish everyday jewellery at PANOOJA India. 316L stainless steel earrings, rings, chains &amp; bracelets with free shipping over ₹799." />
+  <meta name="description" content="Shop waterproof, anti-tarnish everyday jewellery at PANOOJA India. 316L stainless steel earrings, pendants &amp; chains with free shipping over ₹799." />
   <meta name="theme-color" content="#050505" />
   <link rel="canonical" href="https://www.panooja.com/" />
   
@@ -13,7 +13,7 @@
   <meta property="og:type" content="website" />
   <meta property="og:url" content="https://www.panooja.com/" />
   <meta property="og:title" content="PANOOJA — Waterproof &amp; Anti-Tarnish Jewellery India" />
-  <meta property="og:description" content="Shop waterproof, anti-tarnish everyday jewellery at PANOOJA India. 316L stainless steel earrings, rings, chains &amp; bracelets with free shipping over ₹799." />
+  <meta property="og:description" content="Shop waterproof, anti-tarnish everyday jewellery at PANOOJA India. 316L stainless steel earrings, pendants &amp; chains with free shipping over ₹799." />
   <meta property="og:image" content="https://www.panooja.com/og-image.jpg" />
   <meta property="og:image:width" content="1200" />
   <meta property="og:image:height" content="630" />
@@ -30,9 +30,9 @@
   
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,600&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   
-  <link rel="stylesheet" href="/styles.css?v=10" />
+  <link rel="stylesheet" href="/styles.css?v=11" />
 
   <!-- Google Identity Services (Sign in with Google / Gmail) -->
   <meta name="google-signin-client_id" content="63300831514-5qg0db4qmdnfa5g4vkfqh339e3asriv2.apps.googleusercontent.com" />
@@ -183,7 +183,10 @@
       </div>
 
       <div class="hero-visual" aria-label="PANOOJA Jewellery Preview">
-        <img src="/hero.jpg" alt="Minimal jewellery flat lay with earrings, rings, and chains" class="hero-image" loading="eager" />
+        <picture>
+          <source id="heroPictureSource" srcset="/shell-pearl-pendant.webp" type="image/webp" />
+          <img id="heroImg" src="/shell-pearl-pendant.jpg" alt="PANOOJA Sea Shell Pearl Pendant — waterproof and anti-tarnish everyday jewellery" class="hero-image" loading="eager" fetchpriority="high" />
+        </picture>
       </div>
     </section>
 
@@ -214,7 +217,7 @@
           </div>
           <div class="trust-strip-text">
             <h4>Free Shipping ₹799+</h4>
-            <p>Express 3–5 business day pan-India delivery</p>
+            <p>Dispatched within 24 hours · Delivery in 2–5 business days</p>
           </div>
         </div>
         <div class="trust-strip-item">
@@ -230,7 +233,7 @@
     </section>
 
     <!-- Categories Section -->
-    <section class="section collections" id="collections">
+    <section class="section collections" id="collections" style="display: none;">
       <div class="section-heading reveal">
         <p class="eyebrow">SHOP BY CATEGORY</p>
         <h2>Built around the pieces you reach for most.</h2>
@@ -238,20 +241,32 @@
       </div>
 
       <div class="collection-grid">
-        <a href="/#shop" class="collection-card collection-card-tall reveal category-trigger" data-filter-target="earrings">
-          <img src="/earrings.jpg" alt="Modern gold-tone hoop and drop earrings" class="card-image" loading="lazy" />
+        <a href="/#shop" class="collection-card collection-card-tall reveal category-trigger" data-filter-target="earrings" hidden style="display: none;">
+          <picture>
+            <source data-fallback-srcset="/earrings.webp" type="image/webp" />
+            <img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-fallback-jpg="/earrings.jpg" alt="PANOOJA Earrings Collection" class="card-image" loading="lazy" />
+          </picture>
           <div class="collection-meta"><span>01</span><h3>Earrings</h3><p>Studs, hoops and delicate drops.</p></div>
         </a>
-        <a href="/#shop" class="collection-card reveal category-trigger" data-filter-target="rings">
-          <img src="/rings.jpg" alt="Minimal gold-tone stacking rings" class="card-image" loading="lazy" />
+        <a href="/#shop" class="collection-card reveal category-trigger" data-filter-target="rings" hidden style="display: none;">
+          <picture>
+            <source data-fallback-srcset="/rings.webp" type="image/webp" />
+            <img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-fallback-jpg="/rings.jpg" alt="PANOOJA Rings Collection" class="card-image" loading="lazy" />
+          </picture>
           <div class="collection-meta"><span>02</span><h3>Rings</h3><p>Minimal bands and modern statements.</p></div>
         </a>
-        <a href="/#shop" class="collection-card reveal category-trigger" data-filter-target="pendants">
-          <img src="/pendants.jpg" alt="Delicate pendant and layered chains" class="card-image" loading="lazy" />
+        <a href="/#shop" class="collection-card reveal category-trigger" data-filter-target="pendants" hidden style="display: none;">
+          <picture>
+            <source data-fallback-srcset="/pendants.webp" type="image/webp" />
+            <img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-fallback-jpg="/pendants.jpg" alt="PANOOJA Pendants and Chains Collection" class="card-image" loading="lazy" />
+          </picture>
           <div class="collection-meta"><span>03</span><h3>Pendants &amp; Chains</h3><p>Layer-ready, everyday shine.</p></div>
         </a>
-        <a href="/#shop" class="collection-card collection-card-wide reveal category-trigger" data-filter-target="bracelets">
-          <img src="/bracelets.jpg" alt="Modern gold-tone kada and bracelets" class="card-image" loading="lazy" />
+        <a href="/#shop" class="collection-card collection-card-wide reveal category-trigger" data-filter-target="bracelets" hidden style="display: none;">
+          <picture>
+            <source data-fallback-srcset="/bracelets.webp" type="image/webp" />
+            <img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-fallback-jpg="/bracelets.jpg" alt="PANOOJA Kadas and Bracelets Collection" class="card-image" loading="lazy" />
+          </picture>
           <div class="collection-meta"><span>04</span><h3>Kadas &amp; Bracelets</h3><p>Polished silhouettes with an elevated finish.</p></div>
         </a>
       </div>
@@ -262,15 +277,15 @@
       <div class="section-heading reveal">
         <p class="eyebrow">CURATED COLLECTION</p>
         <h2>Shop Anti-Tarnish Jewellery</h2>
-        <p>Explore our live catalog synced directly with our studio inventory. Free shipping on all orders above ₹799.</p>
+        <p>Explore our current collection. Free shipping on all orders above ₹799.</p>
       </div>
 
       <div class="category-filter-wrap reveal">
         <button class="filter-btn active" data-filter="all">All</button>
-        <button class="filter-btn" data-filter="earrings">Earrings</button>
-        <button class="filter-btn" data-filter="rings">Rings</button>
-        <button class="filter-btn" data-filter="pendants">Pendants &amp; Chains</button>
-        <button class="filter-btn" data-filter="bracelets">Kadas &amp; Bracelets</button>
+        <button class="filter-btn" data-filter="earrings" hidden style="display: none;">Earrings</button>
+        <button class="filter-btn" data-filter="rings" hidden style="display: none;">Rings</button>
+        <button class="filter-btn" data-filter="pendants" hidden style="display: none;">Pendants &amp; Chains</button>
+        <button class="filter-btn" data-filter="bracelets" hidden style="display: none;">Kadas &amp; Bracelets</button>
       </div>
 
       <div class="product-grid" id="productGrid">
@@ -321,7 +336,10 @@
     <!-- Our Story (Present Tense) -->
     <section class="story section" id="story">
       <div class="story-panel reveal">
-        <img src="/story.jpg" alt="Woman's hand wearing modern gold-tone stacking rings" class="story-image" loading="lazy" />
+        <picture>
+          <source id="storyPictureSource" srcset="/shell-pearl-pendant.webp" type="image/webp" />
+          <img id="storyImg" src="/shell-pearl-pendant.jpg" alt="PANOOJA Sea Shell Pearl Pendant on card" class="story-image" loading="lazy" />
+        </picture>
         <div class="story-copy">
           <p class="eyebrow">Our story</p>
           <h2>Jewellery beyond short-term trends.</h2>
@@ -393,11 +411,11 @@
         </details>
         <details class="reveal">
           <summary>How fast is PANOOJA delivery across India?<span>+</span></summary>
-          <p>We dispatch orders within 24 hours from Surat. Express pan-India delivery arrives in 3–5 business days via DTDC, Delhivery, BlueDart, or The Professional Couriers. You will receive live SMS and WhatsApp tracking updates once your parcel ships.</p>
+          <p>Dispatched within 24 hours · Delivery in 2–5 business days via DTDC, Delhivery, BlueDart, or The Professional Couriers. You will receive live SMS and WhatsApp tracking updates once your parcel ships.</p>
         </details>
         <details class="reveal">
           <summary>Do you offer free shipping?<span>+</span></summary>
-          <p>Yes! We offer <strong>FREE Express Shipping</strong> on all orders above ₹799 across India. For orders below ₹799, a flat shipping charge of ₹79 is applied at checkout.</p>
+          <p>Yes! We offer <strong>FREE Shipping</strong> on all orders above ₹799 across India. For orders below ₹799, a flat shipping charge of ₹79 is applied at checkout.</p>
         </details>
         <details class="reveal">
           <summary>What payment methods do you accept?<span>+</span></summary>
@@ -422,7 +440,7 @@
   <!-- Footer -->
   <footer>
     <div class="footer-brand">
-      <img src="/logo.png" alt="PANOOJA" class="footer-logo" />
+      <img src="/logo.png" alt="PANOOJA" class="footer-logo" loading="lazy" />
       <p class="footer-desc">Modern anti-tarnish and waterproof everyday jewellery designed for everyday confidence.</p>
     </div>
     <div class="footer-links">
@@ -461,7 +479,7 @@
 
     <!-- Free Shipping Progress Bar -->
     <div class="shipping-progress-container" id="shippingProgressContainer">
-      <div class="shipping-progress-text" id="shippingProgressText">Add ₹799 more for FREE Express Shipping!</div>
+      <div class="shipping-progress-text" id="shippingProgressText">Add ₹799 more for FREE Shipping!</div>
       <div class="shipping-progress-bar">
         <div class="shipping-progress-fill" id="shippingProgressFill" style="width: 0%;"></div>
       </div>
@@ -514,7 +532,7 @@
           <span id="drawerDiscount">-₹0</span>
         </div>
         <div class="summary-line">
-          <span>Express Shipping</span>
+          <span>Shipping</span>
           <span id="drawerShipping">FREE</span>
         </div>
         <div class="summary-line summary-total">
@@ -645,16 +663,16 @@
         <div class="review-row"><span>Total Items</span><span id="checkoutItemCount">0</span></div>
         <div class="review-row"><span>Subtotal</span><span id="checkoutSubtotal">₹0</span></div>
         <div class="review-row" id="checkoutDiscountRow" style="display: none;"><span>Discount Applied</span><span id="checkoutDiscount">-₹0</span></div>
-        <div class="review-row"><span>Express Pan-India Shipping</span><span id="checkoutShipping">FREE</span></div>
+        <div class="review-row"><span>Pan-India Shipping</span><span id="checkoutShipping">FREE</span></div>
         <div class="review-row total-row"><span>Amount Payable</span><span id="checkoutGrandTotal">₹0</span></div>
-        <div class="price-tax-note price-tax-note-right">Inclusive of all taxes</div>
+        <div class="price-tax-note price-tax-note-right">Inclusive of all taxes · Dispatched within 24 hours · Delivery in 2–5 business days</div>
       </div>
 
       <!-- Checkout Options -->
       <div class="checkout-actions-wrap" id="checkoutActionsWrap">
         <button type="button" class="button button-whatsapp" id="checkoutWhatsappBtn">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12.031 6.172c-3.181 0-5.767 2.586-5.768 5.766-.001 1.298.38 2.27 1.019 3.287l-.711 2.598 2.669-.699c.969.54 1.771.82 2.791.82 3.182 0 5.768-2.587 5.768-5.766 0-3.18-2.586-5.766-5.768-5.766zm9.969 5.766c0 5.514-4.486 10-10 10-1.802 0-3.489-.479-4.945-1.312l-5.055 1.376 1.396-4.935c-.917-1.503-1.446-3.267-1.446-5.129 0-5.514 4.486-10 10-10s10 4.486 10 10z"/></svg>
-          Order via WhatsApp (Instant Dispatch)
+          Order via WhatsApp
         </button>
         <button type="button" class="button button-primary" id="checkoutOnlineBtn" style="display: none;">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect><line x1="1" y1="10" x2="23" y2="10"></line></svg>
@@ -676,7 +694,7 @@
         <div class="carousel-viewport" id="quickViewCarousel">
           <div class="carousel-track" id="quickViewTrack">
             <div class="carousel-slide">
-              <img id="quickViewImg" src="" alt="PANOOJA Jewellery" referrerPolicy="no-referrer" />
+              <img id="quickViewImg" src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" alt="PANOOJA Jewellery" referrerPolicy="no-referrer" />
             </div>
           </div>
           <div class="carousel-dots" id="quickViewDots"></div>
@@ -690,6 +708,7 @@
         </button>
       </div>
       <div class="quick-view-details">
+        <nav class="qv-breadcrumb" id="quickViewBreadcrumb" aria-label="Breadcrumb"><a href="/">Home</a> <span aria-hidden="true">/</span> <a href="/#shop">Jewellery</a> <span aria-hidden="true">/</span> <span>Product</span></nav>
         <span class="product-category-tag" id="quickViewCategory">Jewellery</span>
         <h2 id="quickViewTitle" class="quick-view-title">Product Title</h2>
         
@@ -753,7 +772,7 @@
           </details>
           <details>
             <summary>Shipping &amp; 7-Day Replacement</summary>
-            <p>Dispatched within 24 hours from Surat. Express pan-India delivery arrives in 3–5 business days. Free shipping on orders above ₹799. Replacement within 7 days for damaged, defective or wrong items. An uncut unboxing video is required.</p>
+            <p>Dispatched within 24 hours · Delivery in 2–5 business days across India. Free shipping on orders above ₹799. Replacement within 7 days for damaged, defective or wrong items. An uncut unboxing video is required.</p>
           </details>
         </div>
       </div>
@@ -768,7 +787,7 @@
     <button type="button" class="image-zoom-nav image-zoom-prev" id="imageZoomPrev" aria-label="Previous photo">&#8249;</button>
     <button type="button" class="image-zoom-nav image-zoom-next" id="imageZoomNext" aria-label="Next photo">&#8250;</button>
     <div class="image-zoom-stage" id="imageZoomStage">
-      <img id="imageZoomImg" src="" alt="" referrerPolicy="no-referrer" />
+      <img id="imageZoomImg" src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" alt="" referrerPolicy="no-referrer" />
     </div>
     <div class="image-zoom-hint">Tap or click photo to zoom &middot; Pinch to zoom on phone</div>
   </div>
@@ -797,9 +816,9 @@
   </div>
 
   <!-- Scripts -->
-  <script src="/config.js?v=2"></script>
-  <script src="/auth.js?v=3"></script>
-  <script src="/cart.js?v=10"></script>
-  <script src="/script.js?v=10"></script>
+  <script src="/config.js?v=3"></script>
+  <script src="/auth.js?v=4"></script>
+  <script src="/cart.js?v=11"></script>
+  <script src="/script.js?v=11"></script>
 </body>
 </html>
